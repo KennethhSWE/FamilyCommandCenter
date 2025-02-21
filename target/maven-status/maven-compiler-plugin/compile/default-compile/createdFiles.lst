@@ -1,0 +1,10 @@
+com\family\app\controllers\ChoreController.class
+com\family\app\entity\FamilyMember.class
+com\family\app\service\ChoreService.class
+com\family\app\repositories\ChoreRepository.class
+com\family\app\controllers\FamilyMemberController.class
+com\family\app\entity\FamilyMember$FamilyMemberBuilder.class
+com\family\app\FamilyCommandCenterApplication.class
+com\family\app\repositories\FamilyMemberRepository.class
+com\family\app\service\FamilyMemberService.class
+com\family\app\entity\Chore.class

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <style>
+        /* Light Mode Theme */
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #f9f9f9, #e3f2fd);
+            color: #333;
+            text-align: center;
+        transition: all 0.3s ease-in-out;
+        }
+       /* Centered Container with a Polished Glass Effect */
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        /* Header Styling */
+        .header {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        /* Date & Time Styling */
+        .date-time {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #666;
+        }
+        /* Tabs Styling */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 15px;
+        }
+        /* Tab Buttons */
+        .tab {
+            cursor: pointer;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(to right, #3498db, #2980b9);
+            color: #fff;
+            border-radius: 25px;
+            border: none;
+            outline: none;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Active Tab */
+        .tab.active {
+            background: #2c3e50;
+        }
+
+        /* Sections */
+        .section {
+            display: none;
+            padding: 20px;
+        }
+        .section.active {
+            display: block;
+        }
+
+        /* Kids' Chore Cards */
+        .kids-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        /* Individual Kid Card */
+        .kid-card {
+            width: 320px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Kid's Name & Points */
+        .kid-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .points {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2ecc71;
+        }
+
+        /* Chore List */
+        .chore-list {
+            padding: 0;
+            list-style-type: none;
+        }
+
+        /* Chore Items */
+        .chore-list li {
+            background-color: #ecf0f1;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Completed Chores */
+        .chore-list li.completed {
+            background: #27ae60;
+            color: white;
+            text-decoration: line-through;
+            font-weight: bold;
+        }
+
+        /* Hover Effect */
+        .chore-list li:hover {
+            background: #bdc3c7;
+        }
+
+        /* Dark Mode */
+        .dark-mode {
+            background: #1c1c1c;
+            color: white;
+        }
+
+        .dark-mode .container {
+            background: rgba(45, 45, 45, 0.9);
+            color: white;
+        }
+
+        .dark-mode .tab {
+            background: #555;
+        }
+
+        .dark-mode .chore-list li {
+            background: #444;
+            color: white;
+        }
+
+        .dark-mode .chore-list li.completed {
+            background: #2ecc71;
+        }
+
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">Family Command Center</div>
+        <div id="date-time" class="date-time"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('kids')">Kids' Chores</button>
+            <button class="tab" onclick="switchTab('admin')">Admin Panel</button>
+        </div>
+
+        <div id="kids" class="section active">
+            <h2>Kids' Chores</h2>
+            <div class="kids-container" id="kidsChores"></div>
+        </div>
+
+        <div id="admin" class="section">
+            <h2>Admin Panel</h2>
+            <h3>Add a Chore</h3>
+            <input type="text" id="choreName" placeholder="Chore Name">
+            <input type="number" id="chorePoints" placeholder="Points">
+            <select id="familyMemberSelect"></select>
+            <button onclick="addChore()">Add Chore</button>
+        </div>
+    </div>
+
+    <script>
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('date-time').innerText = now.toLocaleString();
+        }
+        setInterval(updateTime, 1000);
+
+        function switchTab(tab) {
+            document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+        }
+
+        async function fetchChores() {
+            const response = await fetch('http://localhost:8080/api/chores');
+            const chores = await response.json();
+            const membersData = await fetch('http://localhost:8080/api/family-members');
+            const members = await membersData.json();
+            const kids = members.filter(member => member.firstName !== 'Kenneth' && member.firstName !== 'Danielle');
+
+            const container = document.getElementById('kidsChores');
+            container.innerHTML = '';
+
+            kids.forEach(kid => {
+                let kidChores = chores.filter(chore => chore.assignedTo === kid.firstName);
+                let randomChores = kidChores.sort(() => 0.5 - Math.random()).slice(0, 3); 
+
+                container.innerHTML += `
+                    <div class="kid-card">
+                        <div class="kid-name">${kid.firstName} <span id="points-${kid.firstName}" class="points">(${kid.totalPoints} pts)</span></div>
+                        <ul class="chore-list">
+                            ${randomChores.map(chore => `
+                                <li onclick="completeChore(this, ${chore.points}, '${kid.firstName}')">${chore.name}</li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            });
+        }
+        fetchChores();
+
+       function completeChore(element, points, kidName) {
+            if (!element.classList.contains('completed')) {
+                element.classList.add('completed');
+
+        // Get the points display element
+        let pointsElement = document.getElementById(`points-${kidName}`);
+
+        // Extract the current points value
+        let currentPoints = parseInt(pointsElement.innerText.match(/\d+/)[0]) || 0;
+
+        // Add the chore's points
+        let newTotal = currentPoints + points;
+
+        // Update the UI
+        pointsElement.innerText = `(${newTotal} pts)`;
+
+        // Optional: Send updated points to backend API
+        updateKidPoints(kidName, newTotal);
+    }
+}
+
+
+        async function addChore() {
+            const name = document.getElementById('choreName').value;
+            const points = document.getElementById('chorePoints').value;
+            const memberId = document.getElementById('familyMemberSelect').value;
+
+            if (!name || !points || !memberId) {
+                alert("Please fill out all fields.");
+                return;
+            }
+
+            await fetch('http://localhost:8080/api/chores', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, points, assignedTo: { id: memberId } })
+            });
+
+            fetchChores();
+        }
+    </script>
+</body>
+</html>
