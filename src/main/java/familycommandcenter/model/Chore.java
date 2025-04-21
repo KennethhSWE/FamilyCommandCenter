@@ -1,27 +1,41 @@
-package model;
+package familycommandcenter.model;
 
 public class Chore {
 
-    Private String name;
-    Private String description;
-    Private boolean isCompleted;
+    private String name;
+    private String description;
+    private boolean completed;
 
-    Chore(String name, String description, boolean isCompleted) {
+    public Chore(String name, String description, boolean completed) {
         this.name = name;
         this.description = description;
-        this.isCompleted = isCompleted;
+        this.completed = completed;
     }
 
-    String getName() {
-        return this.name;
+    //Getters 
+     public String getName() {
+        return name;
     }   
 
-    String getDescription() {
-        return this.description;
+     public String getDescription() {
+        return description;
     }   
 
-    boolean get.isCompleted() {
-        return this.isCompleted;
+     public boolean isCompleted() {
+        return completed;
+    }
+
+    //Setters
+     public void setName(String name) {
+        this.name = name;
+    }   
+
+     public void setDescription(String description) {
+        this.description = description;
+    }   
+
+     public void setCompleted(boolean completed) {
+        this.completed = completed;
     }
 }
 
