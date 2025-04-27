@@ -1,0 +1,30 @@
+@font-face {
+    font-family: 'Roboto';
+    src: url('fonts/static/Roboto-Regular.ttf');
+}
+
+.root {
+    -fx-font-family: 'Roboto', 'Arial', sans-serif;
+}
+
+.tab-pane {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 10;
+    -fx-padding: 5px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12, 0.3, 0, 4);
+}
+
+.tab-pane .tab-header-area .tab {
+    -fx-background-color: #2C3E50;
+    -fx-text-base-color: #FFFFFF;
+    -fx-padding: 8px 16px;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: #1ABC9C; /* Accent color for selected tab */
+}
+
+.label, .text {
+    -fx-text-fill: #34495E;
+}
+

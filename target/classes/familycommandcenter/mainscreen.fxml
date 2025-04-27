@@ -1,35 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.text.Text?>
-<?import javafx.scene.control.Label?>  
-<?import javafx.scene.control.ScrollPane?> 
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.VBox?>
 
-<AnchorPane xmlns:fx="http://javafx.com/fxml" fx:controller="familycommandcenter.MainScreen">
-    <TabPane prefWidth="640.0" prefHeight="480.0" tabClosingPolicy="UNAVAILABLE">
-        <Tab text="Chores">
-            <VBox spacing="10" alignment="TOP_LEFT">
-                <!-- Add UI elements for chores here -->
-                 <Label text= "Welcome to the Hayes Chores List!" style= "-fx-font-size: 20px; -fx-font-weight: bold;"/>
-                 <Text wrappingWidth="600" style="-fx-font-size: 16px;">
-                    Here you can see the chores lists,
-                    Look over the Calendar,
-                    and change things via admin tab.
-                </Text>
-            </VBox>
-        </Tab>
-        <Tab text="Calendar">
-            <VBox spacing="10" alignment="TOP_LEFT">
-                <!-- Add UI elements for calendar here -->
-            </VBox>
-        </Tab>
-        <Tab text="Admin">
-            <VBox spacing="10" alignment="TOP_LEFT">
-                <!-- Add UI elements for admin here -->
-            </VBox>
-        </Tab>
+<AnchorPane xmlns:fx="http://javafx.com/fxml" fx:controller="familycommandcenter.MainScreen"
+            stylesheets="@style.css"
+            style="-fx-background-color: #ECF0F1;">
+
+    <TabPane prefWidth="640.0" prefHeight="480.0" tabClosingPolicy="UNAVAILABLE"
+             style="-fx-background-color: #FFFFFF; -fx-tab-min-height: 35;">
+
+        <tabs>
+            <Tab text="Chores" style="-fx-background-color: #2C3E50; -fx-text-base-color: #FFFFFF;">
+                <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-padding: 10;">
+                    <VBox fx:id="choreListVBox" spacing="10" alignment="TOP_LEFT"
+                          style="-fx-background-color: transparent; -fx-padding: 15;">
+                        
+                        <Label text="Welcome to the Hayes Chores List!"
+                               style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #2C3E50;"/>
+
+                        <Text wrappingWidth="600"
+                              style="-fx-font-size: 16px; -fx-text-fill: #34495E;">
+                            Here you can see the chores lists,
+                            look over the calendar,
+                            and change things via the admin tab.
+                        </Text>
+
+                        <!-- Example placeholder for chore items -->
+                        <VBox spacing="5">
+                            <Label text="• Vacuum living room" style="-fx-font-size: 14px; -fx-text-fill: #34495E;"/>
+                            <Label text="• Feed pets" style="-fx-font-size: 14px; -fx-text-fill: #34495E;"/>
+                            <Label text="• Clean kitchen counters" style="-fx-font-size: 14px; -fx-text-fill: #34495E;"/>
+                        </VBox>
+
+                    </VBox>
+                </ScrollPane>
+            </Tab>
+
+            <Tab text="Calendar" style="-fx-background-color: #2C3E50; -fx-text-base-color: #FFFFFF;">
+                <VBox spacing="10" alignment="TOP_LEFT" style="-fx-padding: 15;">
+                    <Label text="Calendar View Coming Soon!"
+                           style="-fx-font-size: 18px; -fx-text-fill: #7F8C8D;"/>
+                </VBox>
+            </Tab>
+
+            <Tab text="Admin" style="-fx-background-color: #2C3E50; -fx-text-base-color: #FFFFFF;">
+                <VBox spacing="10" alignment="TOP_LEFT" style="-fx-padding: 15;">
+                    <Label text="Admin Controls Coming Soon!"
+                           style="-fx-font-size: 18px; -fx-text-fill: #7F8C8D;"/>
+                </VBox>
+            </Tab>
+        </tabs>
     </TabPane>
+
 </AnchorPane>
