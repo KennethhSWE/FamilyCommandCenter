@@ -1,0 +1,7 @@
+familycommandcenter\model\FamilyMember.class
+familycommandcenter\PrimaryController.class
+module-info.class
+familycommandcenter\App.class
+familycommandcenter\model\Chore.class
+familycommandcenter\SecondaryController.class
+familycommandcenter\MainScreen.class

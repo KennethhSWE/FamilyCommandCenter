@@ -18,6 +18,9 @@ public class App extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         scene = new Scene(loadFXML("mainscreen"), 640, 480);
+        scene.getRoot().getStyleClass().add("root");
+        // adding the CSS file to the scene as javafx css isn't supported in this version of Java. 
+        scene.getStylesheets().add(App.class.getResource("/familycommandcenter/style.css").toExternalForm());
         stage.setScene(scene);
         stage.show();
     }
@@ -34,5 +37,4 @@ public class App extends Application {
     public static void main(String[] args) {
         launch();
     }
-
 }
