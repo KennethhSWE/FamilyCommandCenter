@@ -36,13 +36,18 @@
 }
 
 /* Style for the TitlePane and chore list */
-.title-pane > .title {
-    -fx-font-size: 2px;
+.titled-pane > .title {
+    -fx-font-size: 20px;
     -fx-font-weight: bold;
-    -fx-text-fill: #3a86d2;
-    -fx-background-color: #ffffff;
+    -fx-text-fill: #064e96;
     -fx-padding: 10;
     -fx-border-radius: 5;
+}
+
+.titled-pane > .header-region {
+    -fx-background-color: red;
+    -fx-border-radius: 5;
+    -fx-padding: 10;
 }
 
 .titled-pane > .title:hover {

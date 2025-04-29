@@ -5,9 +5,20 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.AnchorPane?>
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml" fx:controller="familycommandcenter.MainScreen">
     <TabPane prefWidth="640.0" prefHeight="480.0" tabClosingPolicy="UNAVAILABLE">
@@ -40,7 +51,21 @@
 
             <Tab text="Admin">
                 <VBox spacing="10" alignment="TOP_LEFT">
-                    <Label text="Admin Controls Coming Soon!" />
+                    <Button fx:id="addChoreButton" text="Add Chore" />
+                    <VBox fx:id="addChoreForm" spacing="10" visible="false">
+                        <Label text="Assign Chore to Child" style="-fx-font-weight: bold;" />
+                        <Label text="Child Name:" />
+                        <ComboBox fx:id="childComboBox" promptText="Select a child" />
+                        <Label text="Chore Description:" />
+                        <TextField fx:id="choreDescField" />
+                        <Label text="Due Date (YYYY-MM-DD):" />
+                        <TextField fx:id="dueDaTextField" />
+                        <HBox spacing="10">
+                            <Button fx:id="submitChoreButton" text="Submit" />
+                            <Button fx:id="cancelChoreButton" text="Cancel" />
+                        </HBox>
+                        <Label fx:id="formStatusLabel" text="" />
+                    </VBox>
                 </VBox>
             </Tab>
         </tabs>
