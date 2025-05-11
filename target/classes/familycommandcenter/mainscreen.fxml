@@ -56,6 +56,8 @@
                         <Label text="Assign Chore to Child" style="-fx-font-weight: bold;" />
                         <Label text="Child Name:" />
                         <ComboBox fx:id="childComboBox" promptText="Select a child" />
+                        <Label text = "Chore Title:" />
+                        <ComboBox fx:id="choreTitleComboBox" promptText="Select a room" />
                         <Label text="Chore Description:" />
                         <TextField fx:id="choreDescField" />
                         <Label text="Due Date (YYYY-MM-DD):" />

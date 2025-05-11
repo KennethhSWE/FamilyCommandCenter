@@ -32,6 +32,8 @@ public class FamilyMember {
     public void addChore(Chore chore) {
         this.assignedChores.add(chore);
     }
+
+    
 }
     
 
