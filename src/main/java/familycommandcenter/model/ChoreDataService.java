@@ -3,12 +3,12 @@ package familycommandcenter.model;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.File;
-import java.util.ArrayList;
+import java.io.File;import java.util.ArrayList;
 import java.util.List;
 
 public class ChoreDataService {
-    private static final String CHORES_FILE = "chores.json";
+    private static final String CHORES_FILE = 
+        System.getProperty("user.home") + File.separator + "familycommandcenter_chores.json";
     private static final ObjectMapper mapper = new ObjectMapper();
 
     public static List<Chore> loadChores() {
@@ -26,7 +26,9 @@ public class ChoreDataService {
 
     public static void saveChores(List<Chore> chores) {
         try {
-            mapper.writerWithDefaultPrettyPrinter().writeValue(new File(CHORES_FILE), chores);
+            File file = new File(CHORES_FILE);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(file, chores);
+            System.out.println("Saved " + chores.size() + " chores to " + file.getAbsolutePath());
         } catch (Exception e) {
             e.printStackTrace();
         }
