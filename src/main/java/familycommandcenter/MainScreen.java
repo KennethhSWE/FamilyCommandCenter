@@ -64,7 +64,7 @@ public class MainScreen {
             chores.add(new Chore("Kitchen Cleaning", "Load the dishwasher", familyMembers.get(0).getName(), "2025-04-27", false));
             chores.add(new Chore("Kitchen Cleaning", "Wipe down the counters and table", familyMembers.get(1).getName(), "2025-04-27", false));
             chores.add(new Chore("Kitchen Cleaning", "Take out the trash", familyMembers.get(0).getName(), "2025-04-27", false));
-            chores.add(new Chore("Living Room Cleaning", "Start the Roomba", familyMembers.get(2)getName(), "2025-04-27", false));
+            chores.add(new Chore("Living Room Cleaning", "Start the Roomba", familyMembers.get(2).getName(), "2025-04-27", false));
             chores.add(new Chore("Living Room Cleaning", "Dust the TV stand", familyMembers.get(1).getName(),"2025-04-27", false));
             chores.add(new Chore("Living Room Cleaning", "Pick up toys", familyMembers.get(2).getName(), "2025-04-27", false));
             chores.add(new Chore("Living Room Cleaning", "Organize the shoes", familyMembers.get(1).getName(), "2025-04-27", false));
@@ -82,11 +82,12 @@ public class MainScreen {
             }
         }
 
-        // Assign chores to family members
+        // Assign chores to family members  
         for (Chore chore : chores) {
             for (FamilyMember member : familyMembers) {
-                if (member.getName().equalsIgnoreCase(chore.assignedToname())) {
+                if (member.getName().equalsIgnoreCase(chore.getAssignedToName())) {
                     member.addChore(chore);
+                    break;
                 }
             }
         }
@@ -137,11 +138,10 @@ public class MainScreen {
             formStatusLabel.setText("Chore assigned successfully!");
             formStatusLabel.setStyle("-fx-text-fill: green; -fx-background-color: #d6ffd6;");
             clearForm();
-
-            // Reassign chores to family members refresh the UI
-            assignChoresToMembers(familyMembers);
-            refreshChoreList(familyMembers);
         });
+
+        assignChoresToMembers(familyMembers);
+        refreshChoreList(familyMembers);
     }
 
     private void assignChoresToMembers(List<FamilyMember> familyMembers) {
@@ -151,7 +151,9 @@ public class MainScreen {
 
         for (Chore chore : chores) {
             for (FamilyMember member : familyMembers) {
-                if (member.getName().equals(chore.assignedToname())) {
+                if (member.getName().equals(chore.getAssignedToName())) {
+                    member.addChore(chore);
+                    break;
                 }
             }
         }

@@ -25,7 +25,7 @@ public class Chore {
         return description;
     }   
 
-    public String assignedToname() {
+    public String getAssignedToName() {
         return assignedToName;
     }
 
