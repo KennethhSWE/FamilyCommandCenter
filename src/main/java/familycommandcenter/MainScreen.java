@@ -61,20 +61,20 @@ public class MainScreen {
             e.printStackTrace();
         }
         if (chores.isEmpty()) {
-            chores.add(new Chore("Kitchen Cleaning", "Load the dishwasher", familyMembers.get(0), "2025-04-27", false));
-            chores.add(new Chore("Kitchen Cleaning", "Wipe down the counters and table", familyMembers.get(1), "2025-04-27", false));
-            chores.add(new Chore("Kitchen Cleaning", "Take out the trash", familyMembers.get(0), "2025-04-27", false));
-            chores.add(new Chore("Living Room Cleaning", "Start the Roomba", familyMembers.get(2), "2025-04-27", false));
-            chores.add(new Chore("Living Room Cleaning", "Dust the TV stand", familyMembers.get(1), "2025-04-27", false));
-            chores.add(new Chore("Living Room Cleaning", "Pick up toys", familyMembers.get(2), "2025-04-27", false));
-            chores.add(new Chore("Living Room Cleaning", "Organize the shoes", familyMembers.get(1), "2025-04-27", false));
-            chores.add(new Chore("Room Cleaning", "Make the bed", familyMembers.get(0), "2025-04-27", false));
-            chores.add(new Chore("Room Cleaning", "Make the bed", familyMembers.get(1), "2025-04-27", false));
-            chores.add(new Chore("Room Cleaning", "Put away clothes", familyMembers.get(2), "2025-04-27", false));
-            chores.add(new Chore("Room Cleaning", "Put away clothes", familyMembers.get(1), "2025-04-27", false));
-            chores.add(new Chore("Room Cleaning", "Put away clothes", familyMembers.get(0), "2025-04-27", false));
-            chores.add(new Chore("Room Cleaning", "Vaccum the floor", familyMembers.get(0), "2025-04-27", false));
-            chores.add(new Chore("Room Cleaning", "Vaccum the floor", familyMembers.get(1), "2025-04-27", false));
+            chores.add(new Chore("Kitchen Cleaning", "Load the dishwasher", familyMembers.get(0).getName(), "2025-04-27", false));
+            chores.add(new Chore("Kitchen Cleaning", "Wipe down the counters and table", familyMembers.get(1).getName(), "2025-04-27", false));
+            chores.add(new Chore("Kitchen Cleaning", "Take out the trash", familyMembers.get(0).getName(), "2025-04-27", false));
+            chores.add(new Chore("Living Room Cleaning", "Start the Roomba", familyMembers.get(2)getName(), "2025-04-27", false));
+            chores.add(new Chore("Living Room Cleaning", "Dust the TV stand", familyMembers.get(1).getName(),"2025-04-27", false));
+            chores.add(new Chore("Living Room Cleaning", "Pick up toys", familyMembers.get(2).getName(), "2025-04-27", false));
+            chores.add(new Chore("Living Room Cleaning", "Organize the shoes", familyMembers.get(1).getName(), "2025-04-27", false));
+            chores.add(new Chore("Room Cleaning", "Make the bed", familyMembers.get(0).getName(), "2025-04-27", false));
+            chores.add(new Chore("Room Cleaning", "Make the bed", familyMembers.get(1).getName(), "2025-04-27", false));
+            chores.add(new Chore("Room Cleaning", "Put away clothes", familyMembers.get(2).getName(), "2025-04-27", false));
+            chores.add(new Chore("Room Cleaning", "Put away clothes", familyMembers.get(1).getName(), "2025-04-27", false));
+            chores.add(new Chore("Room Cleaning", "Put away clothes", familyMembers.get(0).getName(), "2025-04-27", false));
+            chores.add(new Chore("Room Cleaning", "Vaccum the floor", familyMembers.get(0).getName(), "2025-04-27", false));
+            chores.add(new Chore("Room Cleaning", "Vaccum the floor", familyMembers.get(1).getName(), "2025-04-27", false));
             try {
                 ChoreDataService.saveChores(chores);
             } catch (Exception e) {
@@ -85,10 +85,8 @@ public class MainScreen {
         // Assign chores to family members
         for (Chore chore : chores) {
             for (FamilyMember member : familyMembers) {
-                if (member.getName().equals(chore.getAssignedTo().getName()) &&
-                    member.getRole().equals(chore.getAssignedTo().getRole())) {
+                if (member.getName().equalsIgnoreCase(chore.assignedToname())) {
                     member.addChore(chore);
-                    break;
                 }
             }
         }
@@ -127,7 +125,7 @@ public class MainScreen {
                 return;
             }
 
-            Chore newChore = new Chore(title, desc, child, due, false);
+            Chore newChore = new Chore(title, desc, child.getName(), due, false);
             child.addChore(newChore);
             chores.add(newChore);
             try {
@@ -153,10 +151,7 @@ public class MainScreen {
 
         for (Chore chore : chores) {
             for (FamilyMember member : familyMembers) {
-                if (member.getName().equals(chore.getAssignedTo().getName()) &&
-                    member.getRole().equals(chore.getAssignedTo().getRole())) {
-                    member.addChore(chore);
-                    break;
+                if (member.getName().equals(chore.assignedToname())) {
                 }
             }
         }

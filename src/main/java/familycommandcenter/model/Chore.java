@@ -4,14 +4,14 @@ public class Chore {
 
     private String title;
     private String description;
-    private FamilyMember assignedTo;
+    private String assignedToName;
     private String dueDate;
     private boolean completed;
 
-    public Chore(String title, String description, FamilyMember assignedTo, String dueDate, boolean completed) {
+    public Chore(String title, String description, String assignedToName, String dueDate, boolean completed) {
         this.title = title;
         this.description = description;
-        this.assignedTo = assignedTo;
+        this.assignedToName = assignedToName;
         this.dueDate = dueDate;
         this.completed = completed;
     }
@@ -25,8 +25,8 @@ public class Chore {
         return description;
     }   
 
-    public FamilyMember getAssignedTo() {
-        return assignedTo;
+    public String assignedToname() {
+        return assignedToName;
     }
 
     public String getDueDate() {
@@ -46,8 +46,8 @@ public class Chore {
         this.description = description;
     }   
 
-    public void setAssignedTo(FamilyMember assignedTo) {
-        this.assignedTo = assignedTo;
+    public void setAssignedToName(String assignedToName) {
+        this.assignedToName = assignedToName;
     }
 
     public void setDueDate(String dueDate) {
