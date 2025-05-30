@@ -11,14 +11,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.control.Tab?>
-<?import javafx.scene.control.TabPane?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.layout.AnchorPane?>
 
 <AnchorPane xmlns:fx="http://javafx.com/fxml" fx:controller="familycommandcenter.MainScreen">
     <TabPane prefWidth="640.0" prefHeight="480.0" tabClosingPolicy="UNAVAILABLE">
@@ -32,23 +25,15 @@
                             look over the calendar,
                             and change things via the admin tab.
                         </Text>
-
-                        <!-- Example placeholder for chore items -->
-                        <VBox spacing="5">
-                            <Label text="• Vacuum living room" />
-                            <Label text="• Feed pets" />
-                            <Label text="• Clean kitchen counters" />
-                        </VBox>
+                        <!-- REMOVE any static VBox or Label with hardcoded chores here! -->
                     </VBox>
                 </ScrollPane>
             </Tab>
-
             <Tab text="Calendar">
                 <VBox spacing="10" alignment="TOP_LEFT">
                     <Label text="Calendar View Coming Soon!" />
                 </VBox>
             </Tab>
-
             <Tab text="Admin">
                 <VBox spacing="10" alignment="TOP_LEFT">
                     <Button fx:id="addChoreButton" text="Add Chore" />
@@ -56,7 +41,7 @@
                         <Label text="Assign Chore to Child" style="-fx-font-weight: bold;" />
                         <Label text="Child Name:" />
                         <ComboBox fx:id="childComboBox" promptText="Select a child" />
-                        <Label text = "Chore Title:" />
+                        <Label text="Chore Title:" />
                         <ComboBox fx:id="choreTitleComboBox" promptText="Select a room" />
                         <Label text="Chore Description:" />
                         <TextField fx:id="choreDescField" />

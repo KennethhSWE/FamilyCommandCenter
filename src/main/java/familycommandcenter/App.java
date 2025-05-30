@@ -12,7 +12,7 @@ import java.io.IOException;
  * JavaFX App
  */
 public class App extends Application {
-
+    // The scene that will be used throughout the application
     private static Scene scene;
 
     @Override
@@ -24,16 +24,16 @@ public class App extends Application {
         stage.setScene(scene);
         stage.show();
     }
-
+    // This method is used to set the root of the scene to a new FXML file.
     static void setRoot(String fxml) throws IOException {
         scene.setRoot(loadFXML(fxml));
     }
-
+    // This method is used to load the FXML file and return the Parent object.
     private static Parent loadFXML(String fxml) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("/familycommandcenter/" + fxml + ".fxml"));
         return fxmlLoader.load();
     }
-
+    //Entry Point of the application  
     public static void main(String[] args) {
         launch();
     }
