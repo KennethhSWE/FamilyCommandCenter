@@ -7,21 +7,30 @@ public class Chore {
     private String assignedToName;
     private String dueDate;
     private boolean completed;
+    private boolean firstAttempt;
+    private boolean verifiedByParent;
+    private int points;
 
     // No-arg constructor required for Jackson
-    public Chore() {}
-
+    public Chore() {
+    }
+    // Constructor with parameters to initialize a Chore object
     public Chore(String title, String description, String assignedToName, String dueDate, boolean completed) {
         this.title = title;
         this.description = description;
         this.assignedToName = assignedToName;
         this.dueDate = dueDate;
         this.completed = completed;
+        this.firstAttempt = true; // Assuming first attempt is true when a chore is created
+        this.verifiedByParent = false; // Assuming it is not verified by parent when created
+        this.points = 0; // Assuming no points are awarded when a chore is created
     }
 
+    // Getters and Setters
     public String getTitle() {
         return title;
     }
+
     public void setTitle(String title) {
         this.title = title;
     }
@@ -29,6 +38,7 @@ public class Chore {
     public String getDescription() {
         return description;
     }
+
     public void setDescription(String description) {
         this.description = description;
     }
@@ -36,6 +46,7 @@ public class Chore {
     public String getAssignedToName() {
         return assignedToName;
     }
+
     public void setAssignedToName(String assignedToName) {
         this.assignedToName = assignedToName;
     }
@@ -43,6 +54,7 @@ public class Chore {
     public String getDueDate() {
         return dueDate;
     }
+
     public void setDueDate(String dueDate) {
         this.dueDate = dueDate;
     }
@@ -53,19 +65,27 @@ public class Chore {
     public void setCompleted(boolean completed) {
         this.completed = completed;
     }
-    public boolean firstAttempt() {
-        // This method is a placeholder for any logic that determines if this is the first attempt at completing the chore.
-        // For now, it simply returns false, indicating it's not the first attempt.
-        return false;
+
+    public void setFirstAttempt(boolean firstAttempt) {
+        this.firstAttempt = firstAttempt;
     }
-    public boolean verifiedByParent() {
-        // This method is a placeholder for any logic that determines if the chore has been verified by a parent.
-        // For now, it simply returns false, indicating it has not been verified.
-        return false;
+
+    public boolean isFirstAttempt() {
+        return firstAttempt; 
+    }
+
+    public void setVerifiedByParent(boolean verifiedByParent) {
+        this.verifiedByParent = verifiedByParent;
+    }
+
     public int points() {
-        // This method is a placeholder for any logic that calculates points for the chore.
-        // For now, it simply returns 0, indicating no points are awarded.
+        if (completed && verifiedByParent) {
+            if (firstAttempt) {
+                return 10; // Points for first attempt
+            } else {
+                return 5; // Points for subsequent attempts
+            }
+        }
         return 0;
     }
-    
 }

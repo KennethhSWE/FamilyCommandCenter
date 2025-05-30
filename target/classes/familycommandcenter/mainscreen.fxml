@@ -50,6 +50,8 @@
                         <HBox spacing="10">
                             <Button fx:id="submitChoreButton" text="Submit" />
                             <Button fx:id="cancelChoreButton" text="Cancel" />
+                            <Button fx:id="Approved" text="Approve" />
+                            <Button fx:id="Reject" text="Reject" />
                         </HBox>
                         <Label fx:id="formStatusLabel" text="" />
                     </VBox>

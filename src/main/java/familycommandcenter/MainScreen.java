@@ -45,8 +45,12 @@ public class MainScreen {
 
         chores = ChoreDataService.loadChores();
         if (chores == null || chores.isEmpty()) {
-            //populateDefaultChores();
-            //chores = ChoreDataService.loadChores(); // <-- reload after populating
+            chores = new ArrayList<>();
+            formStatusLabel.setText("No chores found. Please add some.");
+            formStatusLabel.setStyle("-fx-text-fill: red;");
+        } else {
+            formStatusLabel.setText("Chores loaded successfully.");
+            formStatusLabel.setStyle("-fx-text-fill: green;");
         }
 
         assignChoresToMembers();
