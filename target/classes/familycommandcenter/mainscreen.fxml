@@ -46,16 +46,21 @@
                         <Label text="Chore Description:" />
                         <TextField fx:id="choreDescField" />
                         <Label text="Due Date (YYYY-MM-DD):" />
-                        <TextField fx:id="dueDaTextField" />
+                        <TextField fx:id="dueDateTextField" />
                         <HBox spacing="10">
                             <Button fx:id="submitChoreButton" text="Submit" />
                             <Button fx:id="cancelChoreButton" text="Cancel" />
-                            <Button fx:id="Approved" text="Approve" />
-                            <Button fx:id="Reject" text="Reject" />
                         </HBox>
                         <Label fx:id="formStatusLabel" text="" />
                     </VBox>
                 </VBox>
+            </Tab>
+            <Tab text="Approval/Denial">
+                <VBox spacing="10" alignment="TOP_LEFT">
+                    <Label text="Check chore completion" />
+                    <Button fx:id="Arrove" text="Approve completion" />
+                    <Button fx:id="Deny" text="Chore needs work" />
+                    </VBox>
             </Tab>
         </tabs>
     </TabPane>

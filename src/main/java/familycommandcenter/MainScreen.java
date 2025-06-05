@@ -4,6 +4,9 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import familycommandcenter.model.*;
+import de.jensd.fx.glyphs.fontawesome.FontAwesomeIcon;
+import de.jensd.fx.glyphs.fontawesome.FontAwesomeIconView;
+
 
 import java.util.*;
 
@@ -24,7 +27,7 @@ public class MainScreen {
     @FXML
     private TextField choreDescField;
     @FXML
-    private TextField dueDaTextField;
+    private TextField dueDateTextField;
     @FXML
     private Label formStatusLabel;
     @FXML
@@ -74,7 +77,7 @@ public class MainScreen {
         String childName = childComboBox.getValue();
         String title = choreTitleComboBox.getValue();
         String desc = choreDescField.getText().trim();
-        String due = dueDaTextField.getText().trim();
+        String due = dueDateTextField.getText().trim();
 
         if (childName == null || title == null || desc.isEmpty() || due.isEmpty()) {
             formStatusLabel.setText("Please fill in all fields.");
@@ -95,6 +98,7 @@ public class MainScreen {
         formStatusLabel.setText("Chore assigned successfully!");
         formStatusLabel.setStyle("-fx-text-fill: green;");
         clearForm();
+        addChoreForm.setVisible(false);
     }
 
     private void assignChoresToMembers() {
@@ -134,6 +138,7 @@ public class MainScreen {
     private void clearForm() {
         childComboBox.getSelectionModel().clearSelection();
         choreDescField.clear();
-        dueDaTextField.clear();
+        choreTitleComboBox.getSelectionModel().clearSelection();
+        dueDateTextField.clear();
     }
 }
