@@ -3,6 +3,8 @@ package familycommandcenter;
 import io.javalin.Javalin;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
 
 import familycommandcenter.model.Chore;
 import familycommandcenter.model.ChoreDataService;
@@ -34,6 +36,15 @@ public class App {
 
         app.get("/api/family-members", ctx -> {
             ctx.json(new String[] { "Take out the trash", "Feed the dog", "Clean the living room" });
+        });
+
+        app.get("/api/chores/by-user", ctx -> {
+            try {
+                Map<String, List<Chore>> grouped = ChoreDataService.getChoresGroupedByUser();
+                ctx.json(grouped);
+            }catch (SQLException e) {
+                ctx.status(500).result("Error retrieving chores: " + e.getMessage());
+            }
         });
 
         System.out.println("Registering POST /api/chores");
@@ -68,12 +79,14 @@ public class App {
 
         app.patch("/api/chores/{id}", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
+            System.out.println("Updating chore with ID: " + id);
             Chore updatedChore = ctx.bodyAsClass(Chore.class);
 
             try {
                 ChoreDataService.updateChore(updatedChore);
                 ctx.status(200).result("Chore updated successfully");
             } catch (SQLException e) {
+                e.printStackTrace();
                 ctx.status(500).result("Error updating chore: " + e.getMessage());
             }
         });

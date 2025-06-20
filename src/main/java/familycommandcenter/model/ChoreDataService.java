@@ -3,7 +3,9 @@ package familycommandcenter.model;
 import familycommandcenter.Database;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ChoreDataService {
     public static List<Chore> getAllChores() throws SQLException {
@@ -64,7 +66,7 @@ public class ChoreDataService {
     }
 
     public static void updateChore(Chore chore) throws SQLException {
-        String sql = "UPDATE chores SET name = ?, assigned to = ?, is complete = ?, due_date = ?, points = ? WHERE id = ?";
+        String sql = "UPDATE chores SET name = ?, assigned_to = ?, is_complete = ?, due_date = ?, points = ? WHERE id = ?";
         try (Connection conn = Database.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, chore.getName());
@@ -76,5 +78,17 @@ public class ChoreDataService {
 
             stmt.executeUpdate();
         }
+    }
+
+    public static Map<String, List<Chore>> getChoresGroupedByUser() throws SQLException {
+        Map<String, List<Chore>> grouped = new HashMap<>();
+        List<Chore> chores = getAllChores();
+
+        for  (Chore chore : chores) {
+            String user = chore.getAssignedTo();
+            grouped.computeIfAbsent(user, k -> new ArrayList<>()).add(chore);
+        }
+
+        return grouped;
     }
 }
