@@ -42,33 +42,35 @@ public class App {
             try {
                 Map<String, List<Chore>> grouped = ChoreDataService.getChoresGroupedByUser();
                 ctx.json(grouped);
-            }catch (SQLException e) {
+            } catch (SQLException e) {
                 ctx.status(500).result("Error retrieving chores: " + e.getMessage());
             }
         });
 
-        System.out.println("Registering POST /api/chores");
-        // POST endpoint to add a new chore
+        // POST endpoint to add a new chore with validation
         app.post("/api/chores", ctx -> {
             Chore newChore = ctx.bodyAsClass(Chore.class);
             try {
+                ChoreDataService.validateChore(newChore);
                 ChoreDataService.addChore(newChore);
                 ctx.status(201).result("Chore added successfully");
+            } catch (IllegalArgumentException e) {
+                ctx.status(400).result("Validation error: " + e.getMessage());
             } catch (SQLException e) {
                 ctx.status(500).result("Error adding chore: " + e.getMessage());
             }
         });
 
-        System.out.println("Removing Chores endpoint");
+        // DELETE endpoint
         app.delete("/api/chores/{id}", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
             ChoreDataService.deleteChore(id);
             ctx.status(204);
         });
 
+        // PUT endpoint to mark a chore complete
         app.put("/api/chores/{id}/complete", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
-
             try {
                 ChoreDataService.markChoreComplete(id);
                 ctx.status(200).result("Chore marked as complete.");
@@ -77,17 +79,42 @@ public class App {
             }
         });
 
+        // PATCH endpoint to update a chore with validation
         app.patch("/api/chores/{id}", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
             System.out.println("Updating chore with ID: " + id);
             Chore updatedChore = ctx.bodyAsClass(Chore.class);
+            updatedChore.setId(id);  // Ensure correct ID is set from path
 
             try {
+                ChoreDataService.validateChore(updatedChore);
                 ChoreDataService.updateChore(updatedChore);
                 ctx.status(200).result("Chore updated successfully");
+            } catch (IllegalArgumentException e) {
+                ctx.status(400).result("Validation error: " + e.getMessage());
             } catch (SQLException e) {
                 e.printStackTrace();
                 ctx.status(500).result("Error updating chore: " + e.getMessage());
+            }
+        });
+
+        // GET total points by user
+        app.get("/api/chores/points", ctx -> {
+            try {
+                Map<String, Integer> points = ChoreDataService.getTotalPointsByUser();
+                ctx.json(points);
+            } catch (SQLException e) {
+                ctx.status(500).result("Error retrieving points: " + e.getMessage());
+            }
+        });
+
+        // GET chores due today
+        app.get("/api/chores/today", ctx -> {
+            try {
+                List<Chore> todayChores = ChoreDataService.getChoresDueToday();
+                ctx.json(todayChores);
+            } catch (SQLException e) {
+                ctx.status(500).result("Error fetching today's chores: " + e.getMessage());
             }
         });
     }
