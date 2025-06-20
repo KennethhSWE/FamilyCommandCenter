@@ -25,7 +25,7 @@ public class App {
             System.out.println("Failed to connect to PostgreSQL: " + e.getMessage());
         }
 
-        // Define routes 
+        // Define routes
         app.get("/", ctx -> ctx.result("Family Command Center is LIVE!"));
 
         app.get("/api/chores", ctx -> {
@@ -33,19 +33,37 @@ public class App {
         });
 
         app.get("/api/family-members", ctx -> {
-            ctx.json(new String[]{"Take out the trash", "Feed the dog", "Clean the living room"});
+            ctx.json(new String[] { "Take out the trash", "Feed the dog", "Clean the living room" });
         });
 
         System.out.println("Registering POST /api/chores");
-        // POST endpoint to add a new chore 
+        // POST endpoint to add a new chore
         app.post("/api/chores", ctx -> {
             Chore newChore = ctx.bodyAsClass(Chore.class);
             try {
                 ChoreDataService.addChore(newChore);
                 ctx.status(201).result("Chore added successfully");
-            }catch (SQLException e) {
+            } catch (SQLException e) {
                 ctx.status(500).result("Error adding chore: " + e.getMessage());
-            } 
+            }
+        });
+
+        System.out.println("Removing Chores endpoint");
+        app.delete("/api/chores/{id}", ctx -> {
+            int id = Integer.parseInt(ctx.pathParam("id"));
+            ChoreDataService.deleteChore(id);
+            ctx.status(204);
+        });
+
+        app.put("/api/chores/{id}/complete", ctx -> {
+            int id = Integer.parseInt(ctx.pathParam("id"));
+
+            try {
+                ChoreDataService.markChoreComplete(id);
+                ctx.status(200).result("Chore marked as complete.");
+            } catch (SQLException e) {
+                ctx.status(500).result("Error marking chore as complete: " + e.getMessage());
+            }
         });
     }
 }

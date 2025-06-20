@@ -44,7 +44,7 @@ public class ChoreDataService {
     }
 
     public static void markChoreComplete(int id) throws SQLException {
-        String sql = "UPDATE chores SET is complete = TRUE WHERE id = ?";
+        String sql = "UPDATE chores SET is_complete = TRUE WHERE id = ?";
 
         try (Connection conn = Database.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
