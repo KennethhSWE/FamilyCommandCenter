@@ -1,36 +1,65 @@
 package familycommandcenter.model;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.io.File;
-import java.io.IOException;
+import familycommandcenter.Database;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ChoreDataService {
-    private static final String FILE_PATH = System.getProperty("user.home") + File.separator + "familycommandcenter_chores.json";
-    private static final ObjectMapper mapper = new ObjectMapper();
+    public static List<Chore> getAllChores() throws SQLException {
+        List<Chore> chores = new ArrayList<>();
+        String sql = "SELECT * FROM chores";
 
-    public static List<Chore> loadChores() {
-        File file = new File(FILE_PATH);
-        if (!file.exists()) {
-            return new ArrayList<>();
+        try (Connection conn = Database.getConnection();
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                Chore chore = new Chore();
+                chore.setId(rs.getInt("id"));
+                chore.setName(rs.getString("name"));
+                chore.setAssignedTo(rs.getString("assigned_to"));
+                chore.setComplete(rs.getBoolean("is_complete"));
+                chore.setDueDate(rs.getString("due_date") != null ? rs.getString("due_date") : null);
+                chore.setPoints(rs.getInt("points"));
+                chores.add(chore);
+            }
+
         }
-        try {
-            return mapper.readValue(file, new TypeReference<List<Chore>>() {});
-        } catch (IOException e) {
-            e.printStackTrace();
-            return new ArrayList<>();
+        return chores;
+    }
+
+    public static void addChore(Chore chore) throws SQLException {
+        String sql = "INSERT INTO chores (name, assigned_to, is_complete, due_date, points) VALUES (?, ?, ?, ?, ?)";
+        try (Connection conn = Database.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, chore.getName());
+            stmt.setString(2, chore.getAssignedTo());
+            stmt.setBoolean(3, chore.isComplete());
+            stmt.setDate(4, Date.valueOf(chore.getDueDate()));
+            stmt.setInt(5, chore.getPoints());
+
+            stmt.executeUpdate();
         }
     }
 
-    public static void saveChores(List<Chore> chores) {
-        File file = new File(FILE_PATH);
-        try {
-            mapper.writerWithDefaultPrettyPrinter().writeValue(file, chores);
-        } catch (IOException e) {
-            e.printStackTrace();
+    public static void markChoreComplete(int id) throws SQLException {
+        String sql = "UPDATE chores SET is complete = TRUE WHERE id = ?";
+
+        try (Connection conn = Database.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+        }
+    }
+
+    public static void deleteChore(int id) throws SQLException {
+        String sql = "DELETE FROM chores WHERE id = ?";
+
+        try (Connection conn = Database.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
         }
     }
 }

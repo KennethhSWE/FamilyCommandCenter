@@ -1,9 +1,6 @@
 familycommandcenter\model\ChoreDataService.class
 familycommandcenter\model\FamilyMember.class
-familycommandcenter\PrimaryController.class
+familycommandcenter\Database.class
 familycommandcenter\App.class
 familycommandcenter\model\Chore.class
-familycommandcenter\SecondaryController.class
-familycommandcenter\MainScreen.class
 familycommandcenter\model\FamilyData.class
-familycommandcenter\model\ChoreDataService$1.class
