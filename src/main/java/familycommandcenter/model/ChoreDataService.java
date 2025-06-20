@@ -187,4 +187,33 @@ public class ChoreDataService {
         }
         return chores;
     }
+
+    public static void verifyChore(int id) throws SQLException {
+        String sql = "UPDATE chores SET is_verified = TRUE WHERE id = ?";
+        try (Connection conn = Database.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+        }
+    }
+
+    public static void awardPointsToUser(String userName, int points) throws SQLException {
+        String updateSql = "UPDATE points_bank SET total_points = total_points + ? WHERE user_name = ?";
+        String insertSql = "INSERT INTO points_bank (user_name, total_points) VALUES (?, ?)";
+
+        try (Connection conn = Database.getConnection()) {
+            PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+            updateStmt.setInt(1, points);
+            updateStmt.setString(2, userName);
+            int rowsAffected = updateStmt.executeUpdate();
+
+            if (rowsAffected == 0) {
+                // No existing rowm insert new
+            PreparedStatement insertStmt = conn.prepareStatement(insertSql);
+            insertStmt.setString(1, userName);
+            insertStmt.setInt(2, points);
+            insertStmt.executeUpdate();
+            }
+        }
+    }
 }

@@ -127,5 +127,22 @@ public class App {
                 ctx.status(500).result("Error fetching overdue chores: " + e.getMessage());
             }
         });
+
+        // Verification endpoint to agree chore was completed by kid
+        app.patch("/api/chores/{id}/verify", ctx -> {
+            int id = Integer.parseInt(ctx.pathParam("id"));
+            try {
+                ChoreDataService.verifyChore(id);
+
+                // Get the chore info to award the points 
+                Chore chore = ChoreDataService.getChoreById(id);
+                ChoreDataService.awardPointsToUser(chore.getAssignedTo(), chore.getPoints());
+
+                ctx.status(200).result("Chore verified and points awarded.");
+            } catch (SQLException e) {
+                e.printStackTrace();
+                ctx.status(500).result("Error verifying chore: " + e.getMessage());
+            }
+        });
     }
 }
