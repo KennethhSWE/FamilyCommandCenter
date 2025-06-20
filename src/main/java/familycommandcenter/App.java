@@ -65,5 +65,17 @@ public class App {
                 ctx.status(500).result("Error marking chore as complete: " + e.getMessage());
             }
         });
+
+        app.patch("/api/chores/{id}", ctx -> {
+            int id = Integer.parseInt(ctx.pathParam("id"));
+            Chore updatedChore = ctx.bodyAsClass(Chore.class);
+
+            try {
+                ChoreDataService.updateChore(updatedChore);
+                ctx.status(200).result("Chore updated successfully");
+            } catch (SQLException e) {
+                ctx.status(500).result("Error updating chore: " + e.getMessage());
+            }
+        });
     }
 }

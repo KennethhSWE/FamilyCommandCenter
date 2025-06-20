@@ -62,4 +62,19 @@ public class ChoreDataService {
             stmt.executeUpdate();
         }
     }
+
+    public static void updateChore(Chore chore) throws SQLException {
+        String sql = "UPDATE chores SET name = ?, assigned to = ?, is complete = ?, due_date = ?, points = ? WHERE id = ?";
+        try (Connection conn = Database.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, chore.getName());
+            stmt.setString(2, chore.getAssignedTo());
+            stmt.setBoolean(3, chore.isComplete());
+            stmt.setDate(4, Date.valueOf(chore.getDueDate()));
+            stmt.setInt(5, chore.getPoints());
+            stmt.setInt(6, chore.getId());
+
+            stmt.executeUpdate();
+        }
+    }
 }
