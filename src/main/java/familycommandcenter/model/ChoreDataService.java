@@ -26,8 +26,8 @@ public class ChoreDataService {
                 chore.setPoints(rs.getInt("points"));
                 chores.add(chore);
             }
-
         }
+
         return chores;
     }
 
@@ -191,7 +191,7 @@ public class ChoreDataService {
     public static void verifyChore(int id) throws SQLException {
         String sql = "UPDATE chores SET is_verified = TRUE WHERE id = ?";
         try (Connection conn = Database.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
             stmt.executeUpdate();
         }
@@ -209,11 +209,51 @@ public class ChoreDataService {
 
             if (rowsAffected == 0) {
                 // No existing rowm insert new
-            PreparedStatement insertStmt = conn.prepareStatement(insertSql);
-            insertStmt.setString(1, userName);
-            insertStmt.setInt(2, points);
-            insertStmt.executeUpdate();
+                PreparedStatement insertStmt = conn.prepareStatement(insertSql);
+                insertStmt.setString(1, userName);
+                insertStmt.setInt(2, points);
+                insertStmt.executeUpdate();
             }
         }
+    }
+
+    public static Chore getChoreById(int id) throws SQLException {
+        String sql = "SELECT * FROM chores WHERE id = ?";
+        try (Connection conn = Database.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                Chore chore = new Chore();
+                chore.setId(rs.getInt("id"));
+                chore.setName(rs.getString("name"));
+                chore.setAssignedTo(rs.getString("assigned_to"));
+                chore.setComplete(rs.getBoolean("is_complete"));
+                chore.setDueDate(rs.getString("due_date"));
+                chore.setPoints(rs.getInt("points"));
+                return chore;
+            } else {
+                return null; // No chore found with the given ID
+            }
+        }
+    }
+
+    public static Map<String, Integer> getAllPointsBank() throws SQLException {
+        Map<String, Integer> pointsMap = new HashMap<>();
+        String sql = "SELECT user_name, total_points FROM points_bank";
+
+        try (Connection conn = Database.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                String user = rs.getString("user_name");
+                int points = rs.getInt("total_points");
+                pointsMap.put(user, points);
+            }
+        }
+        return pointsMap;
     }
 }

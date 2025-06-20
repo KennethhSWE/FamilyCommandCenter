@@ -144,5 +144,14 @@ public class App {
                 ctx.status(500).result("Error verifying chore: " + e.getMessage());
             }
         });
+
+        app.get("/api/points-bank", ctx -> {
+            try {
+                Map<String, Integer> pointsBank = ChoreDataService.getAllPointsBank();
+                ctx.json(pointsBank);
+            } catch (SQLException e) {
+                ctx.status(500).result("Error retrieving points bank: " + e.getMessage());
+            }   
+        });
     }
 }
