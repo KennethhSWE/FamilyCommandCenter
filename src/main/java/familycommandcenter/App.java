@@ -117,5 +117,15 @@ public class App {
                 ctx.status(500).result("Error fetching today's chores: " + e.getMessage());
             }
         });
+
+        //Get overdue chores
+        app.get("/api/chores/overdue", ctx -> {
+            try {
+                List<Chore> overdueChores = ChoreDataService.getOverdueChores();
+                ctx.json(overdueChores);
+            } catch (SQLException e) {
+                ctx.status(500).result("Error fetching overdue chores: " + e.getMessage());
+            }
+        });
     }
 }

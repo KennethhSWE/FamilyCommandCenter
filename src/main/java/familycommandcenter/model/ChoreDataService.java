@@ -165,4 +165,26 @@ public class ChoreDataService {
         }
         return chores;
     }
+
+    public static List<Chore> getOverdueChores() throws SQLException {
+        List<Chore> chores = new ArrayList<>();
+        String sql = "SELECT * FROM chores WHERE due_date < CURRENT_DATE AND is_complete = FALSE";
+
+        try (Connection conn = Database.getConnection();
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                Chore chore = new Chore();
+                chore.setId(rs.getInt("id"));
+                chore.setName(rs.getString("name"));
+                chore.setAssignedTo(rs.getString("assigned_to"));
+                chore.setComplete(rs.getBoolean("is_complete"));
+                chore.setDueDate(rs.getString("due_date"));
+                chore.setPoints(rs.getInt("points"));
+                chores.add(chore);
+            }
+        }
+        return chores;
+    }
 }
