@@ -16,6 +16,11 @@ import familycommandcenter.util.JwtUtil;
 import familycommandcenter.util.PasswordUtils;
 import familycommandcenter.model.Chore;
 import familycommandcenter.model.ChoreDataService;
+import familycommandcenter.model.PointsBankDAO;
+import familycommandcenter.model.Reward;
+import familycommandcenter.model.RewardDAO;
+import familycommandcenter.model.Redemption;
+import familycommandcenter.model.RedemptionDAO;
 import familycommandcenter.util.AuthMiddleware;
 
 public class App {
@@ -27,20 +32,20 @@ public class App {
         }
 
         Javalin app = Javalin.create(config -> {
-            config.plugins.enableCors(cors -> {
-                cors.add(it -> {
-                    it.anyHost();
-                });
-            });
+            config.plugins.enableCors(cors -> cors.add(it -> it.anyHost()));
         }).start(7070);
 
         System.out.println("Javalin server started on port 7070");
 
         UserDAO userDao = new UserDAO(conn);
+        PointsBankDAO pointsBankDAO = new PointsBankDAO(conn);
+        RewardDAO rewardDAO = new RewardDAO(conn);
+        RedemptionDAO redemptionDAO = new RedemptionDAO(conn);
 
         app.post("/api/register", ctx -> {
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {});
+            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {
+            });
             String username = body.get("username");
             String password = body.get("password");
 
@@ -68,7 +73,8 @@ public class App {
 
         app.post("/api/login", ctx -> {
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {});
+            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {
+            });
             String username = body.get("username");
             String password = body.get("password");
 
@@ -93,6 +99,105 @@ public class App {
             ctx.json(Map.of("token", jwt));
         });
 
+        // Chore verification
+        app.patch("/api/chores/{id}/verify", ctx -> {
+            int id = Integer.parseInt(ctx.pathParam("id"));
+            try {
+                ChoreDataService.verifyChore(id);
+                Chore chore = ChoreDataService.getChoreById(id);
+                pointsBankDAO.awardPoints(chore.getAssignedTo(), chore.getPoints());
+                ctx.status(200).result("Chore verified and points awarded.");
+            } catch (Exception e) {
+                ctx.status(500).result("Error verifying chore: " + e.getMessage());
+            }
+        });
+
+        // Reward Redemption Endpoint
+        app.post("/api/rewards/redeem", ctx -> {
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {
+            });
+            String username = body.get("username");
+            int rewardId = Integer.parseInt(body.get("rewardId"));
+
+            Optional<Reward> rewardOpt = rewardDAO.getRewardById(rewardId);
+            if (rewardOpt.isEmpty()) {
+                ctx.status(404).result("Reward not found");
+                return;
+            }
+
+            Reward reward = rewardOpt.get();
+            int userPoints = pointsBankDAO.getPoints(username);
+
+            if (userPoints < reward.getCost()) {
+                //DEBUG statment to see user points and reward cost is terminal
+                System.out.println("DEBUG: User points: " + userPoints + ", Reward cost: " + reward.getCost());
+                ctx.status(400).result("Not enough points for this reward");
+                return;
+            }
+
+            if (reward.isRequiresApproval()) {
+                Redemption redemption = new Redemption();
+                redemption.setUsername(username);
+                redemption.setRewardId(rewardId);
+                redemption.setStatus("pending");
+                redemptionDAO.createRedemption(redemption);
+
+                ctx.status(200).result("Reward redemption requested and pending approval");
+            } else {
+                pointsBankDAO.deductPoints(username, reward.getCost());
+
+                Redemption redemption = new Redemption();
+                redemption.setUsername(username);
+                redemption.setRewardId(rewardId);
+                redemption.setStatus("approved");
+                redemptionDAO.createRedemption(redemption);
+
+                ctx.status(200).result("Reward redeemed successfully");
+            }
+
+        });
+
+        // List available rewards per user
+        app.get("/api/rewards/available/{username}", ctx -> {
+            String username = ctx.pathParam("username");
+            try {
+                int userPoints = pointsBankDAO.getPoints(username);
+                List<Reward> allRewards = rewardDAO.getAllRewards();
+
+                List<Reward> availableRewards = allRewards.stream()
+                        .filter(r -> r.getCost() <= userPoints)
+                        .toList();
+
+                ctx.json(availableRewards);
+            } catch (SQLException e) {
+                ctx.status(500).result("Error retrieving available rewards: " + e.getMessage());
+            }
+        });
+
+        // List total points by user
+        app.get("/api/points/{username}", ctx -> {
+            String username = ctx.pathParam("username");
+            PointsBankDAO pointsDAO = new PointsBankDAO(conn);
+            int points = pointsDAO.getPoints(username);
+            ctx.json(Map.of("userName", username, "points", points));
+        });
+
+        // Rewards listing
+        app.get("/api/rewards", ctx -> {
+            List<Reward> rewards = rewardDAO.getAllRewards();
+            ctx.json(rewards);
+        });
+
+        // Redemption list for user
+        app.get("/api/rewards/redemptions/{username}", ctx -> {
+            String username = ctx.pathParam("username");
+            List<Redemption> redemptions = redemptionDAO.getRedemptionsForUser(username);
+            ctx.json(redemptions);
+        });
+
+        // -- Existing endpoints unchanged below --
+
         app.get("/", ctx -> ctx.result("Family Command Center is LIVE!"));
 
         app.get("/api/chores", ctx -> ctx.json(ChoreDataService.getAllChores()));
@@ -101,6 +206,7 @@ public class App {
             ctx.json(new String[] { "Take out the trash", "Feed the dog", "Clean the living room" });
         });
 
+        // Get chores by user endpoint
         app.get("/api/chores/by-user", ctx -> {
             try {
                 Map<String, List<Chore>> grouped = ChoreDataService.getChoresGroupedByUser();
@@ -110,6 +216,7 @@ public class App {
             }
         });
 
+        // Add chore endpoint
         app.post("/api/chores", ctx -> {
             Chore newChore = ctx.bodyAsClass(Chore.class);
             try {
@@ -123,12 +230,14 @@ public class App {
             }
         });
 
+        // Delete chore endpoint
         app.delete("/api/chores/{id}", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
             ChoreDataService.deleteChore(id);
             ctx.status(204);
         });
 
+        // Mark chore as complete endpoint
         app.put("/api/chores/{id}/complete", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
             try {
@@ -139,6 +248,7 @@ public class App {
             }
         });
 
+        // Update chore endpoint
         app.patch("/api/chores/{id}", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
             Chore updatedChore = ctx.bodyAsClass(Chore.class);
@@ -154,6 +264,7 @@ public class App {
             }
         });
 
+        // Points endpoint
         app.get("/api/chores/points", ctx -> {
             try {
                 Map<String, Integer> points = ChoreDataService.getTotalPointsByUser();
@@ -163,6 +274,7 @@ public class App {
             }
         });
 
+        // Today's chores endpoint
         app.get("/api/chores/today", ctx -> {
             try {
                 List<Chore> todayChores = ChoreDataService.getChoresDueToday();
@@ -172,6 +284,7 @@ public class App {
             }
         });
 
+        // Overdue chores endpoint
         app.get("/api/chores/overdue", ctx -> {
             try {
                 List<Chore> overdueChores = ChoreDataService.getOverdueChores();
@@ -181,19 +294,7 @@ public class App {
             }
         });
 
-        app.patch("/api/chores/{id}/verify", ctx -> {
-            int id = Integer.parseInt(ctx.pathParam("id"));
-            try {
-                ChoreDataService.verifyChore(id);
-                Chore chore = ChoreDataService.getChoreById(id);
-                ChoreDataService.awardPointsToUser(chore.getAssignedTo(), chore.getPoints());
-                ctx.status(200).result("Chore verified and points awarded.");
-            } catch (Exception e) {
-                e.printStackTrace();
-                ctx.status(500).result("Error verifying chore: " + e.getMessage());
-            }
-        });
-
+        // Points bank endpoint
         app.get("/api/points-bank", ctx -> {
             try {
                 Map<String, Integer> pointsBank = ChoreDataService.getAllPointsBank();
@@ -203,10 +304,8 @@ public class App {
             }
         });
 
-        //  Secure ALL /api/chores/* routes (GET, POST, PATCH, etc.)
+        // Secure routes
         app.before("/api/chores/*", new AuthMiddleware());
-
-        //  Protect points bank access
         app.before("/api/points-bank", new AuthMiddleware());
     }
 }
