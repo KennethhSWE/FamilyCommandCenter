@@ -1,6 +1,14 @@
 familycommandcenter\model\ChoreDataService.class
-familycommandcenter\model\FamilyMember.class
 familycommandcenter\Database.class
-familycommandcenter\App.class
-familycommandcenter\model\Chore.class
+familycommandcenter\model\User.class
+familycommandcenter\util\JwtUtil.class
+familycommandcenter\App$2.class
 familycommandcenter\model\FamilyData.class
+familycommandcenter\model\FamilyMember.class
+familycommandcenter\model\UserDAO.class
+familycommandcenter\App$1.class
+familycommandcenter\util\AuthMiddleware.class
+familycommandcenter\App.class
+familycommandcenter\util\PasswordUtils.class
+familycommandcenter\model\Chore.class
+familycommandcenter\controller\AuthController.class

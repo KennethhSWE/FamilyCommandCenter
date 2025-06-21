@@ -1,6 +1,12 @@
 C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\model\ChoreDataService.java
 C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\Database.java
+C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\util\AuthMiddleware.java
+C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\model\UserDAO.java
 C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\model\FamilyData.java
+C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\util\PasswordUtils.java
 C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\model\FamilyMember.java
+C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\util\JwtUtil.java
+C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\controller\AuthController.java
+C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\model\User.java
 C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\model\Chore.java
 C:\DevTools\Java\familycommandcenter\src\main\java\familycommandcenter\App.java
