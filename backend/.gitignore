@@ -1,0 +1,22 @@
+### Java / Maven
+/target/
+/out/
+/*.log
+
+### IDEs
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+### OS / misc
+.DS_Store
+Thumbs.db
+
+### Secrets (if you ever add them)
+.env
+*.key
+*.jks
+*.p12
