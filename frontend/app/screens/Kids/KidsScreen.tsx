@@ -1,67 +1,48 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
-import axios from "axios";
-import KidCard from "../../components/KidCard";
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, Text, StyleSheet } from 'react-native';
+import KidCard from '../../components/KidCard';
 
-interface ChoreDTO {
+interface Chore {
   id: number;
   name: string;
-  assignedTo: string;   
+  assignedTo: string;
+  complete: boolean;
   dueDate: string;
   points: number;
-  complete: boolean;
 }
 
 const KidsScreen = () => {
-  const [kids]        = useState<string[]>(["Ella", "Lincoln", "Austin"]);
-  const [choresByKid, setChoresByKid] = useState<Record<string, ChoreDTO[]>>({});
-  const [loading,     setLoading]     = useState(true);
+  const [chores, setChores] = useState<Chore[]>([]);
 
   useEffect(() => {
     const fetchChores = async () => {
-
-       console.log("Fetching chores...");
-
       try {
-        // correct URL
-        const { data } = await axios.get<ChoreDTO[]>(
-          "http://192.168.0.120:7070/api/chores"
-        );
-
-        // group with correct keys
-        const grouped: Record<string, ChoreDTO[]> = {};
-        kids.forEach(kid => {
-          grouped[kid] = data.filter(
-            c => c.assignedTo.trim() === kid && !c.complete
-          );
-        });
-        console.log("Grouped:", grouped);
-      
-        setChoresByKid(grouped);
-      } catch (err) {
-        console.error("Error fetching chores:", err);
-      } finally {
-        setLoading(false);
+        const response = await fetch('http://localhost:7070/chores');
+        const data = await response.json();
+        console.log("Fetched chores:", data);
+        setChores(data);
+      } catch (error) {
+        console.error('Error fetching chores:', error);
       }
     };
 
     fetchChores();
-  }, [kids]);
+  }, []);
 
-  if (loading) {
-    return <ActivityIndicator size="large" style={{ flex: 1 }} />;
-  }
+  // Group chores by kid name
+  const choresByKid: Record<string, Chore[]> = chores.reduce((acc, chore) => {
+    if (!acc[chore.assignedTo]) {
+      acc[chore.assignedTo] = [];
+    }
+    acc[chore.assignedTo].push(chore);
+    return acc;
+  }, {} as Record<string, Chore[]>);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {kids.map(kid => (
-        <KidCard key={kid} name={kid} chores={choresByKid[kid] ?? []} />
+      <Text style={styles.header}>Today's Chores</Text>
+      {Object.entries(choresByKid).map(([kidName, kidChores]) => (
+        <KidCard key={kidName} name={kidName} chores={kidChores} />
       ))}
     </ScrollView>
   );
@@ -69,8 +50,12 @@ const KidsScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    paddingBottom: 100,
+    padding: 16,
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 20,
   },
 });
 
