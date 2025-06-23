@@ -9,55 +9,59 @@ import {
 import axios from "axios";
 import KidCard from "../../components/KidCard";
 
+interface ChoreDTO {
+  id: number;
+  name: string;
+  assignedTo: string;   
+  dueDate: string;
+  points: number;
+  complete: boolean;
+}
+
 const KidsScreen = () => {
-  const [kids, setKids] = useState<string[]>(["Ella", "Lincoln", "Austin"]); // temp hardcoded
-  const [choresByKid, setChoresByKid] = useState<any>({});
-  const [loading, setLoading] = useState(true);
+  const [kids]        = useState<string[]>(["Ella", "Lincoln", "Austin"]);
+  const [choresByKid, setChoresByKid] = useState<Record<string, ChoreDTO[]>>({});
+  const [loading,     setLoading]     = useState(true);
 
   useEffect(() => {
     const fetchChores = async () => {
+
+       console.log("Fetching chores...");
+
       try {
-        const res = await axios.get<
-          {
-            id: number;
-            name: string;
-            assigned_to: string;
-            points: number;
-            is_complete: boolean;
-          }[]
-        >("http://192.168.0.120:7070/chores");
+        // correct URL
+        const { data } = await axios.get<ChoreDTO[]>(
+          "http://192.168.0.120:7070/api/chores"
+        );
 
-        const chores = res.data;
-
-        console.log('Fetched chores: ', chores);
-
-        const grouped: any = {};
-        console.log("Fetched chores: ", chores);
-        console.log("Grouped by kid: ", grouped);
-        kids.forEach((kid) => {
-          grouped[kid] = chores.filter(
-            (c: any) => c.assigned_to === kid && !c.is_complete
+        // group with correct keys
+        const grouped: Record<string, ChoreDTO[]> = {};
+        kids.forEach(kid => {
+          grouped[kid] = data.filter(
+            c => c.assignedTo.trim() === kid && !c.complete
           );
         });
-
-        console.log('Grouped chores: ', grouped); 
-
+        console.log("Grouped:", grouped);
+      
         setChoresByKid(grouped);
+      } catch (err) {
+        console.error("Error fetching chores:", err);
+      } finally {
         setLoading(false);
-      } catch (error) {
-        console.error("Error fetching chores:", error);
       }
     };
 
     fetchChores();
-  }, []);
+  }, [kids]);
 
-  if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
+  if (loading) {
+    return <ActivityIndicator size="large" style={{ flex: 1 }} />;
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {kids.map((kid) => (
-        <KidCard key={kid} name={kid} chores={choresByKid[kid] || []} />
+      {kids.map(kid => (
+        <KidCard key={kid} name={kid} chores={choresByKid[kid] ?? []} />
       ))}
     </ScrollView>
   );

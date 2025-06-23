@@ -8,6 +8,8 @@ interface Props {
 }
 
 const KidCard = ({ name, chores }: Props) => {
+  console.log("Rendering KidCard for", name, "with chores", chores.length);
+  
   return (
     <View style={styles.card}>
       <Text style={styles.kidName}>{name}</Text>
