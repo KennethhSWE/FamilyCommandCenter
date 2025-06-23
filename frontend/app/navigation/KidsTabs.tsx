@@ -10,3 +10,5 @@ export default function KidsTabs() {
     </Tab.Navigator>
   );
 }
+
+export default KidsTabs;

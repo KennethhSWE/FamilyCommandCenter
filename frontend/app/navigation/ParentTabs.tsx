@@ -14,3 +14,5 @@ export default function ParentTabs() {
     </Tab.Navigator>
   );
 }
+
+export default ParentTabs;
