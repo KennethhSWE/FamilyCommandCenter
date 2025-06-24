@@ -17,7 +17,7 @@ const KidsScreen = () => {
   useEffect(() => {
     const fetchChores = async () => {
       try {
-        const response = await fetch('http://localhost:7070/chores');
+        const response = await fetch('http://192.168.1.122:7070/api/chores');
         const data = await response.json();
         console.log("Fetched chores:", data);
         setChores(data);
@@ -29,12 +29,13 @@ const KidsScreen = () => {
     fetchChores();
   }, []);
 
-  // Group chores by kid name
+  // Group chores by kid name (trimmed to exclude spaces errors)
   const choresByKid: Record<string, Chore[]> = chores.reduce((acc, chore) => {
-    if (!acc[chore.assignedTo]) {
-      acc[chore.assignedTo] = [];
+    const trimmedName = chore.assignedTo.trim();
+    if (!acc[trimmedName]) {
+      acc[trimmedName] = [];
     }
-    acc[chore.assignedTo].push(chore);
+    acc[trimmedName].push(chore);
     return acc;
   }, {} as Record<string, Chore[]>);
 
