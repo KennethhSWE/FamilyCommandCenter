@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -32,9 +34,11 @@ export default function KidsScreen() {
     }
   };
 
-  useEffect(() => {
+  useFocusEffect(
+    useCallback(() => {
     fetchChores();
-  }, []);
+  }, [])
+);
 
   const handleRefresh = async () => {
     setRefreshing(true);

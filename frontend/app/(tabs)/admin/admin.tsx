@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 import {
   View,
   Text,
@@ -6,9 +8,12 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  TextInput,
+  Switch,
 } from "react-native";
 import axios from "axios";
 
+// Types
 type Chore = {
   id: number;
   assignedTo: string;
@@ -20,6 +25,13 @@ type Chore = {
 
 export default function AdminScreen() {
   const [pendingChores, setPendingChores] = useState<Chore[]>([]);
+
+  // New form state for adding a chore to the pool
+  const [choreName, setChoreName] = useState("");
+  const [points, setPoints] = useState("");
+  const [minAge, setMinAge] = useState("");
+  const [maxAge, setMaxAge] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
 
   const fetchChores = async () => {
     try {
@@ -35,13 +47,15 @@ export default function AdminScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchChores();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchChores();
+    }, [])
+  );
 
   const handleApprove = async (id: number) => {
     try {
-      await axios.patch(`http://192.168.1.122:7070/api/chores/${id}/verify`);
+      await axios.patch(`http://192.168.1.122:7070/api/chores/${id}/approve`);
       Alert.alert("Approved!", "Chore marked as complete.");
       fetchChores();
     } catch (err) {
@@ -55,9 +69,35 @@ export default function AdminScreen() {
       await axios.patch(`http://192.168.1.122:7070/api/chores/${id}/reject`);
       Alert.alert("Rejected", "Chore sent back to kid.");
       fetchChores();
+    } catch (err: any) {
+      console.error("Reject failed:", err.response?.data || err.message);
+      Alert.alert("Error", err.response?.data || "Failed to reject chore.");
+    }
+  };
+
+  const handleCreateChore = async () => {
+    if (!choreName || !points) {
+      Alert.alert("Validation", "Please fill in required fields.");
+      return;
+    }
+
+    try {
+      await axios.post("http://192.168.1.122:7070/api/chores", {
+        name: choreName,
+        points: parseInt(points),
+        minAge: minAge ? parseInt(minAge) : null,
+        maxAge: maxAge ? parseInt(maxAge) : null,
+        isRecurring,
+      });
+      Alert.alert("Success", "Chore added to pool.");
+      setChoreName("");
+      setPoints("");
+      setMinAge("");
+      setMaxAge("");
+      setIsRecurring(false);
     } catch (err) {
-      console.error("Reject failed:", err);
-      Alert.alert("Error", "Failed to reject chore.");
+      console.error("Create chore failed:", err);
+      Alert.alert("Error", "Failed to create chore.");
     }
   };
 
@@ -84,6 +124,40 @@ export default function AdminScreen() {
           </View>
         </View>
       ))}
+
+      <Text style={styles.header}>Create New Chore</Text>
+      <TextInput
+        placeholder="Chore Name"
+        value={choreName}
+        onChangeText={setChoreName}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Points"
+        value={points}
+        onChangeText={setPoints}
+        keyboardType="numeric"
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Min Age (optional)"
+        value={minAge}
+        onChangeText={setMinAge}
+        keyboardType="numeric"
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Max Age (optional)"
+        value={maxAge}
+        onChangeText={setMaxAge}
+        keyboardType="numeric"
+        style={styles.input}
+      />
+      <View style={styles.switchRow}>
+        <Text style={styles.text}>Recurring</Text>
+        <Switch value={isRecurring} onValueChange={setIsRecurring} />
+      </View>
+      <Button title="Add Chore to Pool" onPress={handleCreateChore} />
     </ScrollView>
   );
 }
@@ -101,5 +175,19 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  input: {
+    borderColor: "gray",
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 8,
+    marginBottom: 12,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
 });
