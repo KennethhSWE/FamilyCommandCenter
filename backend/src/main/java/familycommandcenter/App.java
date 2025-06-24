@@ -324,7 +324,8 @@ public class App {
         app.before("/api/chores/*", new AuthMiddleware());
         app.before("/api/points-bank", new AuthMiddleware());
 
-        app.put("/chores/request-complete/{id}", ctx -> {
+        // Request complete Chore completion end point
+        app.put("api/chores/request-complete/{id}", ctx -> {
             int choreId = Integer.parseInt(ctx.pathParam("id"));
             try{
                 ChoreDataService.requestChoreCompletion(choreId);
@@ -332,6 +333,24 @@ public class App {
             }catch (SQLException e) {
                 ctx.status(500).result("Failed to request chore completion.");
                 e.printStackTrace();
+            }
+        });
+
+        //Reject end point for chore completion
+        app.patch("/api/chores/{id}/reject",ctx -> {
+            int choreId = Integer.parseInt(ctx.pathParam("id"));
+            try {
+                Chore chore = ChoreDataService.getChoreById(choreId);
+                if (chore == null) {
+                    ctx.status(404).result("Chore not found");
+                    return;
+                }
+
+                chore.setRequestedComplete(false);
+                ChoreDataService.updateChore(chore);
+                ctx.status(200).result("Chore marked as not pending approval.");
+            } catch (Exception e) {
+                ctx.status(500).result("Error rejecting chore: " + e.getMessage());
             }
         });
     }
