@@ -23,7 +23,7 @@ export default function KidsScreen() {
   useEffect(() => {
     const fetchChores = async () => {
       try {
-        const response = await fetch("http://10.0.2.2:7070/api/chores");
+        const response = await fetch("http://192.168.1.122:7070/api/chores");
         const data = await response.json();
         setChores(data);
       } catch (error) {
@@ -44,13 +44,11 @@ export default function KidsScreen() {
   }, {} as Record<string, Chore[]>);
 
   return (
-     <View style={styles.safeContainer}>
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+    >
       <Text style={styles.header}>🔥 You Are On the Kids Screen</Text>
-      <Text style={{ textAlign: "center", color: "gray", marginBottom: 10 }}>
-        Total chores loaded: {chores.length}
-      </Text>
-
       {Object.entries(choresByKid).map(([kid, kidChores]) => (
         <View key={kid} style={styles.kidBlock}>
           <Text style={styles.kidName}>{kid}</Text>
@@ -60,16 +58,15 @@ export default function KidsScreen() {
         </View>
       ))}
     </ScrollView>
-  </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  scroll: {
     flex: 1,
-    backgroundColor: "#ffffff", // FORCES visible background on all phones
+    backgroundColor: "#ffffff", // Forces visible white background
   },
-  scrollContent: {
+  container: {
     padding: 16,
   },
   header: {
