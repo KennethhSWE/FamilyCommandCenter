@@ -24,6 +24,7 @@ public class ChoreDataService {
                 chore.setComplete(rs.getBoolean("is_complete"));
                 chore.setDueDate(rs.getString("due_date") != null ? rs.getString("due_date") : null);
                 chore.setPoints(rs.getInt("points"));
+                chore.setRequestedComplete(rs.getBoolean("requested_complete"));
                 chores.add(chore);
             }
         }
@@ -255,5 +256,14 @@ public class ChoreDataService {
             }
         }
         return pointsMap;
+    }
+
+    public static void requestChoreCompletion(int choreId) throws SQLException {
+        String sql = "UPDATE chores SET requested_complete = TRUE WHERE id = ?";
+        try (Connection conn = Database.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setInt(1, choreId);
+                stmt.executeUpdate();
+            }
     }
 }

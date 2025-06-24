@@ -8,6 +8,7 @@ public class Chore {
     private boolean isComplete;
     private String dueDate; 
     private int points;  
+    private boolean requestedComplete;
 
     // Getter and Setter methods 
     public int getId() {
@@ -56,6 +57,14 @@ public class Chore {
 
     public void setPoints(int points) {
         this.points = points;
+    }
+
+    public boolean isRequestedComplete() {
+        return requestedComplete;
+    }
+
+    public void setRequestedComplete(boolean requestedComplete) {
+        this.requestedComplete = requestedComplete;
     }
 
     

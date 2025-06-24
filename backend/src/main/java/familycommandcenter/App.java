@@ -323,5 +323,16 @@ public class App {
         // Secure routes
         app.before("/api/chores/*", new AuthMiddleware());
         app.before("/api/points-bank", new AuthMiddleware());
+
+        app.put("/chores/request-complete/{id}", ctx -> {
+            int choreId = Integer.parseInt(ctx.pathParam("id"));
+            try{
+                ChoreDataService.requestChoreCompletion(choreId);
+                ctx.status(200).result("Chore marked as pending approval.");
+            }catch (SQLException e) {
+                ctx.status(500).result("Failed to request chore completion.");
+                e.printStackTrace();
+            }
+        });
     }
 }
