@@ -1,62 +1,85 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import axios from 'axios';
+import React from "react";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { FontAwesome5, Entypo } from "@expo/vector-icons";
 
-const ChoreListItem = ({ chore }: { chore: any }) => {
-  const handleRequestComplete = async () => {
-    try {
-      await axios.put(`http://10.0.2.2:7070/api/chores/request-complete/${chore.id}`);
-      Alert.alert("Chore submitted", "Waiting for parent approval.");
-      // Add optional refresh logic here
-    } catch (err) {
-      console.error('Failed to request chore approval:', err);
-      Alert.alert("Error", "Could not mark chore as pending.");
+interface Chore {
+  id: number;
+  name: string;
+  assignedTo: string;
+  complete: boolean;
+  dueDate: string;
+  points: number;
+  requestedComplete?: boolean;
+}
+
+interface Props {
+  chore: Chore;
+  onRefresh?: () => void; // Optional refresh callback
+}
+
+export default function ChoreListItem({ chore, onRefresh }: Props) {
+  const getStatusIcon = () => {
+    if (chore.complete) {
+      return <FontAwesome5 name="check" size={16} color="gray" />;
+    } else if (chore.requestedComplete) {
+      return <Entypo name="clock" size={16} color="orange" />;
+    } else {
+      return <Entypo name="squared-minus" size={16} color="gray" />;
     }
   };
 
-  const renderStatus = () => {
-    if (chore.complete) return '✅';
-    if (chore.requestedComplete) return '🕒';
-    return '⬜';
+  const handlePress = async () => {
+    if (!chore.complete && !chore.requestedComplete) {
+      try {
+        await fetch(`http://192.168.1.122:7070/api/chores/${chore.id}/request-complete`, {
+          method: "PATCH",
+        });
+
+        // Trigger refresh if callback was passed
+        if (onRefresh) {
+          onRefresh();
+        }
+      } catch (error) {
+        console.error("Error requesting chore completion:", error);
+      }
+    }
   };
 
-  const renderTextColor = () => {
-    if (chore.complete) return styles.done;
-    if (chore.requestedComplete) return styles.pending;
-    return styles.default;
-  };
+  const choreStyle = chore.complete
+    ? styles.complete
+    : chore.requestedComplete
+    ? styles.pending
+    : styles.incomplete;
 
   return (
-    <TouchableOpacity
-      style={styles.item}
-      onPress={handleRequestComplete}
-      disabled={chore.complete || chore.requestedComplete}
-    >
-      <Text style={[styles.text, renderTextColor()]}>
-        {renderStatus()} {chore.name} ({chore.points} pts)
-      </Text>
-    </TouchableOpacity>
+    <Pressable onPress={handlePress}>
+      <View style={styles.container}>
+        {getStatusIcon()}
+        <Text style={[styles.text, choreStyle]}>
+          {chore.name} ({chore.points} pts)
+        </Text>
+      </View>
+    </Pressable>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  item: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderColor: '#eee',
+  container: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
   },
   text: {
-    fontSize: 18,
+    marginLeft: 8,
+    fontSize: 16,
   },
-  done: {
-    color: 'green',
+  complete: {
+    color: "green",
   },
   pending: {
-    color: 'orange',
+    color: "orange",
   },
-  default: {
-    color: '#000',
+  incomplete: {
+    color: "black",
   },
 });
-
-export default ChoreListItem;

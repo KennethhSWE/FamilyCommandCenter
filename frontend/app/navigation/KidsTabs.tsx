@@ -1,5 +1,5 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import KidsScreen from '../screens/Kids/KidsScreen';
+import KidsScreen from '../(tabs)/kids/kids';
 
 const Tab = createBottomTabNavigator();
 
