@@ -5,9 +5,9 @@ import axios from 'axios';
 const ChoreListItem = ({ chore }: { chore: any }) => {
   const handleComplete = async () => {
     try {
-      await axios.patch(`http://192.168.0.120:7070/chores${chore.id}`, {
+      await axios.patch(`http://10.0.2.2:7070/api/chores/${chore.id}`, {
         complete: true,
-      });
+      }); 
       // You could trigger a refresh here with a callback prop
     } catch (err) {
       console.error('Failed to update chore:', err);
