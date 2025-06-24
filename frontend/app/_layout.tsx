@@ -1,32 +1,34 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useState } from "react";
+import "react-native-reanimated";
 
-import useColorScheme from '../hooks/useColorScheme';
+import useColorScheme from "../hooks/useColorScheme";
+import SplashScreenCustom from "./screens/SplashScreen";
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+export { ErrorBoundary } from "expo-router";
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: "(tabs)",
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('./assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("./assets/fonts/SpaceMono-Regular.ttf"),
     ...FontAwesome.font,
   });
+
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (error) throw error;
@@ -34,15 +36,18 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      const timeout = setTimeout(() => {
+        setShowSplash(false);
+        SplashScreen.hideAsync();
+      }, 4500); // match SplashScreen animation time
+      return () => clearTimeout(timeout);
     }
   }, [loaded]);
 
-  if (!loaded) {
-    return null;
-  }
+  if (!loaded) return null;
+  if (showSplash)
+    return <SplashScreenCustom onFinish={() => setShowSplash(false)} />;
 
-  // Wrap in SafeAreaProvider here
   return (
     <SafeAreaProvider>
       <RootLayoutNav />
@@ -54,10 +59,10 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </ThemeProvider>
   );

@@ -48,26 +48,23 @@ const KidsScreen = () => {
   }, {} as Record<string, Chore[]>);
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.debugText}>{debugMessage}</Text>
-
-      {loading && <ActivityIndicator size="large" color="#007aff" />}
+     <View style={styles.safeContainer}>
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <Text style={styles.header}>🔥 You Are On the Kids Screen</Text>
+      <Text style={{ textAlign: "center", color: "gray", marginBottom: 10 }}>
+        Total chores loaded: {chores.length}
+      </Text>
 
       {Object.entries(choresByKid).map(([kid, kidChores]) => (
-        <View key={kid} style={{ marginBottom: 20 }}>
-          <Text style={styles.header}>{kid}</Text>
+        <View key={kid} style={styles.kidBlock}>
+          <Text style={styles.kidName}>{kid}</Text>
           {kidChores.map((chore) => (
             <ChoreListItem key={chore.id} chore={chore} />
           ))}
         </View>
       ))}
-
-      {!loading && chores.length === 0 && (
-        <Text style={{ textAlign: "center", marginTop: 20, color: "gray" }}>
-          No chores available.
-        </Text>
-      )}
     </ScrollView>
+  </View>
   );
 };
 
