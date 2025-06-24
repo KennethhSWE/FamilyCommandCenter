@@ -7,13 +7,15 @@ public class User {
     private String username;
     private String passwordHash;
     private LocalDateTime createdAt;
+    private int age;
 
     // Constructor
-    public User(int id, String username, String passwordHash, LocalDateTime createdAt) {
+    public User(int id, String username, String passwordHash, LocalDateTime createdAt, int age) {
         this.id = id;
         this.username = username;
         this.passwordHash = passwordHash;
         this.createdAt = createdAt;
+        this.age = age;
     }
 
     public User(String username, String passwordHash) {
@@ -53,5 +55,13 @@ public class User {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public int getAge() {
+        return age; 
+    }
+
+    public void setAge(int age) {
+        this.age = age; 
     }
 }

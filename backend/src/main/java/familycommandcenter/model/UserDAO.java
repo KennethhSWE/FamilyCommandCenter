@@ -2,6 +2,8 @@ package familycommandcenter.model;
 
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class UserDAO {
@@ -13,11 +15,12 @@ public class UserDAO {
     }
 
     public boolean registerUser(User user) {
-        String sql = "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO users (username, password_hash, created_at, age) VALUES (?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, user.getUsername());
             stmt.setString(2, user.getPasswordHash());
             stmt.setTimestamp(3, Timestamp.valueOf(user.getCreatedAt()));
+            stmt.setInt(4, user.getAge());
             stmt.executeUpdate();
             return true;
         } catch (SQLException e) {
@@ -37,8 +40,9 @@ public class UserDAO {
                 String uname = rs.getString("username");
                 String hash = rs.getString("password_hash");
                 LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
+                int age = rs.getInt("age");
 
-                return Optional.of(new User(id, uname, hash, createdAt));
+                return Optional.of(new User(id, uname, hash, createdAt, age));
             }
 
         } catch (SQLException e) {
@@ -47,4 +51,29 @@ public class UserDAO {
 
         return Optional.empty();
     }
+
+    public List<User> getAllUsers() {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT * FROM users";
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String uname = rs.getString("username");
+                String hash = rs.getString("password_hash");
+                LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
+                int age = rs.getInt("age");
+
+                users.add(new User(id, uname, hash, createdAt, age));
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error fetching users: " + e.getMessage());
+        }
+
+        return users;
+    }
 }
+

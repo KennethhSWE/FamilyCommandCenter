@@ -99,19 +99,6 @@ public class App {
             ctx.json(Map.of("token", jwt));
         });
 
-        // Chore verification
-        app.patch("/api/chores/{id}/verify", ctx -> {
-            int id = Integer.parseInt(ctx.pathParam("id"));
-            try {
-                ChoreDataService.verifyChore(id);
-                Chore chore = ChoreDataService.getChoreById(id);
-                pointsBankDAO.awardPoints(chore.getAssignedTo(), chore.getPoints());
-                ctx.status(200).result("Chore verified and points awarded.");
-            } catch (Exception e) {
-                ctx.status(500).result("Error verifying chore: " + e.getMessage());
-            }
-        });
-
         // Reward Redemption Endpoint
         app.post("/api/rewards/redeem", ctx -> {
             ObjectMapper mapper = new ObjectMapper();
@@ -324,33 +311,41 @@ public class App {
         app.before("/api/chores/*", new AuthMiddleware());
         app.before("/api/points-bank", new AuthMiddleware());
 
-        // Request complete Chore completion end point
+        // chore request completion
         app.put("api/chores/request-complete/{id}", ctx -> {
             int choreId = Integer.parseInt(ctx.pathParam("id"));
-            try{
+            try {
                 ChoreDataService.requestChoreCompletion(choreId);
                 ctx.status(200).result("Chore marked as pending approval.");
-            }catch (SQLException e) {
+            } catch (SQLException e) {
                 ctx.status(500).result("Failed to request chore completion.");
                 e.printStackTrace();
             }
         });
 
-        //Reject end point for chore completion
-        app.patch("/api/chores/{id}/reject",ctx -> {
-            int choreId = Integer.parseInt(ctx.pathParam("id"));
+        // Chore verification
+        app.patch("/api/chores/{id}/verify", ctx -> {
+            int id = Integer.parseInt(ctx.pathParam("id"));
             try {
-                Chore chore = ChoreDataService.getChoreById(choreId);
-                if (chore == null) {
-                    ctx.status(404).result("Chore not found");
-                    return;
-                }
-
-                chore.setRequestedComplete(false);
-                ChoreDataService.updateChore(chore);
-                ctx.status(200).result("Chore marked as not pending approval.");
+                ChoreDataService.verifyChore(id);
+                Chore chore = ChoreDataService.getChoreById(id);
+                pointsBankDAO.awardPoints(chore.getAssignedTo(), chore.getPoints());
+                ctx.status(200).result("Chore verified and points awarded.");
             } catch (Exception e) {
-                ctx.status(500).result("Error rejecting chore: " + e.getMessage());
+                ctx.status(500).result("Error verifying chore: " + e.getMessage());
+            }
+        });
+
+        app.patch("/api/chores/{id}/reject", ctx -> {
+            int id = Integer.parseInt(ctx.pathParam("id"));
+            Chore chore = ChoreDataService.getChoreById(id);
+            if (chore != null) {
+                chore.setRequestedComplete(false); // send it back to the kid
+                chore.setComplete(false); // ensure it is not marked done
+                ChoreDataService.updateChore(chore);
+                ctx.status(200).result("Chore rejection saved.");
+            } else {
+                ctx.status(404).result("Chore not found.");
             }
         });
     }

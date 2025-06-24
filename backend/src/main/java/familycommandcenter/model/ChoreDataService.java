@@ -261,9 +261,52 @@ public class ChoreDataService {
     public static void requestChoreCompletion(int choreId) throws SQLException {
         String sql = "UPDATE chores SET requested_complete = TRUE WHERE id = ?";
         try (Connection conn = Database.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setInt(1, choreId);
-                stmt.executeUpdate();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, choreId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public static List<Chore> getAllPoolChores() throws SQLException {
+        List<Chore> chores = new ArrayList<>();
+        String sql = "SELECT * FROM chores WHERE assigned_to IS NULL OR assigned_to = ''";
+
+        try (Connection conn = Database.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                Chore chore = new Chore();
+                chore.setId(rs.getInt("id"));
+                chore.setName(rs.getString("name"));
+                chore.setComplete(rs.getBoolean("is_complete"));
+                chore.setDueDate(rs.getString("due_date"));
+                chore.setPoints(rs.getInt("points"));
+                chore.setRequestedComplete(rs.getBoolean("requested_complete"));
+                chore.setMinAge(rs.getObject("min_age") != null ? rs.getInt("min_age") : null);
+                chore.setMaxAge(rs.getObject("max_age") != null ? rs.getInt("max_age") : null);
+                chores.add(chore);
             }
+        }
+
+        return chores;
+    }
+
+    public static void insertAssignedChore(Chore chore) throws SQLException {
+        String sql = "INSERT INTO chores (name, assigned_to, is_complete, due_date, points, requested_complete) VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = Database.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, chore.getName());
+            stmt.setString(2, chore.getAssignedTo());
+            stmt.setBoolean(3, chore.isComplete());
+            stmt.setDate(4, Date
+                    .valueOf(chore.getDueDate() != null ? chore.getDueDate() : java.time.LocalDate.now().toString()));
+            stmt.setInt(5, chore.getPoints());
+            stmt.setBoolean(6, chore.isRequestedComplete());
+
+            stmt.executeUpdate();
+        }
     }
 }
