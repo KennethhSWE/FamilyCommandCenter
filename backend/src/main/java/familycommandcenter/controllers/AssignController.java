@@ -6,6 +6,8 @@ import familycommandcenter.model.User;
 import familycommandcenter.model.UserDAO;
 import io.javalin.http.Context;
 
+import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -20,23 +22,31 @@ public class AssignController {
         this.choreDataService = choreDataService;
     }
 
-    public void assignDailyChores(Context ctx) {
-        List<User> users = userDAO.getAllUsers();
-        List<Chore> chorePool = choreDataService.getAllPoolChores();
+    public void assignDailyChores() {
+        try {
+            List<User> users = userDAO.getAllUsers();
+            List<Chore> chorePool = ChoreDataService.getAllPoolChores();
 
-        for (User user : users) {
-            List<Chore> eligibleChores = chorePool.stream()
-                .filter(c -> (c.getMinAge() == null || user.getAge() >= c.getMinAge()) &&
-                             (c.getMaxAge() == null || user.getAge() <= c.getMaxAge()))
-                .collect(Collectors.toList());
+            for (User user : users) {
+                List<Chore> eligibleChores = chorePool.stream()
+                        .filter(c -> (c.getMinAge() == null || user.getAge() >= c.getMinAge()) &&
+                                (c.getMaxAge() == null || user.getAge() <= c.getMaxAge()))
+                        .collect(Collectors.toList());
 
-            if (!eligibleChores.isEmpty()) {
-                Chore randomChore = eligibleChores.get(new Random().nextInt(eligibleChores.size()));
-                // TODO: Insert chore assignment logic here (save to DB)
-                System.out.println("Assigning chore: " + randomChore.getName() + " to user " + user.getUsername());
+                if (!eligibleChores.isEmpty()) {
+                    Chore selected = eligibleChores.get(new Random().nextInt(eligibleChores.size()));
+                    selected.setAssignedTo(user.getUsername()); // Assign to current user
+                    selected.setComplete(false); // Not complete yet
+                    selected.setRequestedComplete(false); // Not requested either
+                    selected.setDueDate(LocalDate.now().toString()); // Due today
+
+                    ChoreDataService.insertAssignedChore(selected);
+                }
             }
+        } catch (SQLException e) {
+            System.err.println("Failed to assign daily chores: " + e.getMessage());
+            e.printStackTrace();
         }
-
-        ctx.status(200).result("Daily chores assigned.");
     }
+
 }

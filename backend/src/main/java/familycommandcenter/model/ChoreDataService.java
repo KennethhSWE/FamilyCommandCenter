@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ChoreDataService {
+
     public static List<Chore> getAllChores() throws SQLException {
         List<Chore> chores = new ArrayList<>();
         String sql = "SELECT * FROM chores";
@@ -41,7 +42,6 @@ public class ChoreDataService {
             stmt.setBoolean(3, chore.isComplete());
             stmt.setDate(4, Date.valueOf(chore.getDueDate()));
             stmt.setInt(5, chore.getPoints());
-
             stmt.executeUpdate();
         }
     }
@@ -76,43 +76,30 @@ public class ChoreDataService {
             stmt.setDate(4, Date.valueOf(chore.getDueDate()));
             stmt.setInt(5, chore.getPoints());
             stmt.setInt(6, chore.getId());
-
             stmt.executeUpdate();
         }
     }
 
-    // Helper Methods to validate chore data before adding or updating.
     public static void validateChore(Chore chore) throws IllegalArgumentException {
-        if (chore.getName() == null || chore.getName().isEmpty()) {
+        if (chore.getName() == null || chore.getName().isEmpty())
             throw new IllegalArgumentException("Chore name cannot be null or empty");
-        }
 
-        if (chore.getAssignedTo() == null || chore.getAssignedTo().isEmpty()) {
+        if (chore.getAssignedTo() == null || chore.getAssignedTo().isEmpty())
             throw new IllegalArgumentException("Assigned user cannot be null or empty");
-        }
 
-        if (chore.getDueDate() == null || chore.getDueDate().isEmpty()) {
+        if (chore.getDueDate() == null || chore.getDueDate().isEmpty())
             throw new IllegalArgumentException("Due date cannot be null or empty");
-        }
 
-        if (chore.getPoints() < 0) {
+        if (chore.getPoints() < 0)
             throw new IllegalArgumentException("Points cannot be negative");
-        }
 
-        if (chore.getId() < 0) {
+        if (chore.getId() < 0)
             throw new IllegalArgumentException("Chore ID cannot be negative");
-        }
 
-        if (chore.getDueDate() != null) {
-            try {
-                Date.valueOf(chore.getDueDate());
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid date format for due date");
-            }
-        }
-
-        if (chore.getPoints() < 0) {
-            throw new IllegalArgumentException("Points cannot be negative");
+        try {
+            Date.valueOf(chore.getDueDate());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid date format for due date");
         }
     }
 
@@ -137,9 +124,7 @@ public class ChoreDataService {
                 ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                String user = rs.getString("assigned_to");
-                int totalPoints = rs.getInt("total_points");
-                pointsMap.put(user, totalPoints);
+                pointsMap.put(rs.getString("assigned_to"), rs.getInt("total_points"));
             }
         }
         return pointsMap;
@@ -209,7 +194,6 @@ public class ChoreDataService {
             int rowsAffected = updateStmt.executeUpdate();
 
             if (rowsAffected == 0) {
-                // No existing rowm insert new
                 PreparedStatement insertStmt = conn.prepareStatement(insertSql);
                 insertStmt.setString(1, userName);
                 insertStmt.setInt(2, points);
@@ -236,7 +220,7 @@ public class ChoreDataService {
                 chore.setPoints(rs.getInt("points"));
                 return chore;
             } else {
-                return null; // No chore found with the given ID
+                return null;
             }
         }
     }
@@ -250,9 +234,7 @@ public class ChoreDataService {
                 ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                String user = rs.getString("user_name");
-                int points = rs.getInt("total_points");
-                pointsMap.put(user, points);
+                pointsMap.put(rs.getString("user_name"), rs.getInt("total_points"));
             }
         }
         return pointsMap;
@@ -288,24 +270,24 @@ public class ChoreDataService {
                 chores.add(chore);
             }
         }
-
         return chores;
     }
 
     public static void insertAssignedChore(Chore chore) throws SQLException {
-        String sql = "INSERT INTO chores (name, assigned_to, is_complete, due_date, points, requested_complete) VALUES (?, ?, ?, ?, ?, ?)";
-
+        String sql = "INSERT INTO chores (name, assigned_to, is_complete, due_date, points, requested_complete, min_age, max_age, is_recurring) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = Database.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, chore.getName());
             stmt.setString(2, chore.getAssignedTo());
             stmt.setBoolean(3, chore.isComplete());
-            stmt.setDate(4, Date
-                    .valueOf(chore.getDueDate() != null ? chore.getDueDate() : java.time.LocalDate.now().toString()));
+            stmt.setDate(4, Date.valueOf(
+                    chore.getDueDate() != null ? chore.getDueDate() : java.time.LocalDate.now().toString()));
             stmt.setInt(5, chore.getPoints());
             stmt.setBoolean(6, chore.isRequestedComplete());
-
+            stmt.setObject(7, chore.getMinAge(), Types.INTEGER);
+            stmt.setObject(8, chore.getMaxAge(), Types.INTEGER);
+            stmt.setBoolean(9, chore.isRecurring());
             stmt.executeUpdate();
         }
     }
