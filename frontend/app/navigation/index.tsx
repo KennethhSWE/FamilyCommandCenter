@@ -1,8 +1,8 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SplashScreen from "../splash";
-import LoginScreen from "../screens/LoginScreen";
-import RegisterScreen from "../screens/RegisterScreen";
+import LoginScreen from "../login";
+import RegisterScreen from "../register";
 import ParentTabs from "./ParentTabs";
 import KidsTabs from "./KidsTabs";
 

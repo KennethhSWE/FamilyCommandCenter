@@ -1,3 +1,4 @@
+// Add 'onFinish' to props and type it properly
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState } from 'react';
 import {
@@ -17,8 +18,11 @@ const loadingMessages = [
   'Almost ready...'
 ];
 
-export default function SplashScreen() {
-  const router = useRouter();
+interface SplashScreenProps {
+  onFinish: () => void; // Accepts a callback
+}
+
+export default function SplashScreen({ onFinish }: SplashScreenProps) {
   const [messageIndex, setMessageIndex] = useState(0);
   const progress = useState(new Animated.Value(0))[0];
 
@@ -29,7 +33,7 @@ export default function SplashScreen() {
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false,
     }).start(() => {
-      router.replace("./login");
+      onFinish(); // Call the passed prop instead of router.replace
     });
 
     const interval = setInterval(() => {
@@ -46,7 +50,7 @@ export default function SplashScreen() {
 
   return (
     <ImageBackground
-      source={require('../assets/images/FamilyCommandCenterSplash.png')}
+      source={require('./assets/images/FamilyCommandCenterSplash.png')}
       style={styles.background}
       resizeMode="cover"
     >
@@ -86,3 +90,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#00d4ff',
   },
 });
+

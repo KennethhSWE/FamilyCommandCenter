@@ -1,16 +1,18 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import ParentScreen from '../screens/Admin/ParentScreen';
-import RewardScreen from '../screens/Admin/RewardScreen';
-import PointsHouseScreen from '../screens/Admin/PointsHouseScreen';
+import React from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import AdminScreen from "../(tabs)/admin/admin";
+import CalendarScreen from "../(tabs)/calendar/calendar";
+import PointsScreen from "../(tabs)/points/points";
+import RewardsScreen from "../(tabs)/rewards/rewards";
 
 const Tab = createBottomTabNavigator();
 
 export default function ParentTabs() {
   return (
     <Tab.Navigator>
-      <Tab.Screen name="Admin" component={ParentScreen} />
-      <Tab.Screen name="Rewards" component={RewardScreen} />
-      <Tab.Screen name="PointsHouse" component={PointsHouseScreen} />
+      <Tab.Screen name="Admin" component={AdminScreen} />
+      <Tab.Screen name="Rewards" component={RewardsScreen} />
+      <Tab.Screen name="PointsHouse" component={PointsScreen} />
     </Tab.Navigator>
   );
 }
