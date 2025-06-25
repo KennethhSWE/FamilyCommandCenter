@@ -1,3 +1,4 @@
+import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -16,7 +17,8 @@ const loadingMessages = [
   'Almost ready...'
 ];
 
-export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
+export default function SplashScreen() {
+  const router = useRouter();
   const [messageIndex, setMessageIndex] = useState(0);
   const progress = useState(new Animated.Value(0))[0];
 
@@ -27,7 +29,7 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false,
     }).start(() => {
-      onFinish();
+      router.replace("./login");
     });
 
     const interval = setInterval(() => {

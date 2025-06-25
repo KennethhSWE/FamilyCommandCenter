@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 import "react-native-reanimated";
 
 import useColorScheme from "../hooks/useColorScheme";
-import SplashScreenCustom from "./screens/SplashScreen";
+import SplashScreenCustom from "./splash";
 
 export { ErrorBoundary } from "expo-router";
 
