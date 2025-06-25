@@ -18,7 +18,7 @@ const loadingMessages = [
 ];
 
 interface SplashProps {
-  onFinish: () => void;
+  onFinish?: () => void; // ✅ make it optional
 }
 
 export default function SplashAnimation({ onFinish }: SplashProps) {
@@ -32,7 +32,7 @@ export default function SplashAnimation({ onFinish }: SplashProps) {
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false,
     }).start(() => {
-      onFinish();
+      if (onFinish) onFinish(); // ✅ safely call if defined
     });
 
     const interval = setInterval(() => {
@@ -89,3 +89,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#00d4ff',
   },
 });
+

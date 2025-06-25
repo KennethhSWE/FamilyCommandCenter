@@ -1,34 +1,23 @@
-import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import SplashScreen from "../splash";
-import LoginScreen from "../login";
-import RegisterScreen from "../register";
-import ParentTabs from "./ParentTabs";
-import KidsTabs from "./KidsTabs";
+// app/index.tsx
+import React from "react";
+import { useRouter } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import SplashAnimation from "../components/SplashAnimation";   // keep your animation
+import { checkIfUsersExist } from "../lib/auth";
 
-const Stack = createNativeStackNavigator();
+// keep native splash visible
+SplashScreen.preventAutoHideAsync();
 
-export default function Navigation() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{ headerShown: false }}
-        initialRouteName="Splash"
-      >
-        <Stack.Screen name="Splash">
-          {(props) => (
-            <SplashScreen
-              {...props}
-              onFinish={() => props.navigation.replace("Login")}
-            />
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="Parent" component={ParentTabs} />
-        <Stack.Screen name="Kids" component={KidsTabs} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
+export default function RootSplash() {
+  const router = useRouter();
+
+  const handleFinish = async () => {
+    const haveUser = await checkIfUsersExist();
+    await SplashScreen.hideAsync();
+    router.replace(haveUser ? "./(tabs)/kids" : "/register");
+  };
+
+  // <SplashAnimation> will call the prop when it’s done
+  return <SplashAnimation onFinish={handleFinish} />;
 }
 

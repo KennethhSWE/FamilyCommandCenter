@@ -2,10 +2,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { saveToken } from "./lib/auth";            // ← correct relative path
-
-const USERS_KEY = "@fcc_users";
+import { saveUser, saveToken } from "./lib/auth";
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");
@@ -18,21 +15,14 @@ export default function RegisterScreen() {
     }
 
     try {
-      // 1️⃣ Fetch existing users (if any)
-      const raw = await AsyncStorage.getItem(USERS_KEY);
-      const users = raw ? JSON.parse(raw) : [];
+      // 1️⃣ Save the user record (single-family design)
+      await saveUser({ name, createdAt: Date.now() });
 
-      // 2️⃣ Push the new user
-      users.push({ name, createdAt: Date.now() });
-
-      // 3️⃣ Save back to storage
-      await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
-
-      // 4️⃣ Store a dummy auth token (replace later with real backend token)
+      // 2️⃣ (Optional) stash a placeholder auth token
       await saveToken("dummy-token");
 
-      // 5️⃣ Navigate to the main tab navigator
-      router.replace("./(tabs)");
+      // 3️⃣ Navigate straight to the Kids tab
+      router.replace("./(tabs)/kids");
     } catch (error) {
       console.error("Registration failed:", error);
       Alert.alert("Error", "Something went wrong while registering.");

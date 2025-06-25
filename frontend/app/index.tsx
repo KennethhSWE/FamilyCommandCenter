@@ -1,37 +1,72 @@
-// app/index.tsx
 import React, { useEffect, useState } from "react";
-import { useRouter } from "expo-router";
+import { Dimensions, StyleSheet } from "react-native";
+import Carousel from "react-native-reanimated-carousel";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import SplashAnimation from "./components/SplashAnimation";
+import { useRouter } from "expo-router";
+import KidCard from "./components/KidCard";
 
-export default function SplashWrapper() {
-  const [showSplash, setShowSplash] = useState(true);
+interface Kid {
+  id: string;
+  name: string;
+  points: number;
+  avatar?: string;
+  role: "kid" | "parent";
+}
+
+const USERS_KEY = "@fcc_users";
+const { width } = Dimensions.get("window");
+const CARD_WIDTH  = width * 0.68;
+const CARD_HEIGHT = CARD_WIDTH * 1.25;
+
+export default function KidsCarouselScreen() {
+  const [kids, setKids] = useState<Kid[]>([]);
   const router = useRouter();
 
   useEffect(() => {
-    const init = async () => {
-      // Wait for animation to finish (4 s) …
-      await new Promise((res) => setTimeout(res, 4000));
+    (async () => {
+      const raw = await AsyncStorage.getItem(USERS_KEY);
+      const users: Kid[] = raw ? JSON.parse(raw) : [];
 
-      const user = await AsyncStorage.getItem("@fcc_user");
+      // fallback demo list if storage empty
+      const demo = [
+        { id: "1", name: "Austin",  points:  80, role: "kid" },
+        { id: "2", name: "Ella",    points: 120, role: "kid" },
+        { id: "3", name: "Lincoln", points:  65, role: "kid" },
+      ];
 
-      // Hide splash
-      setShowSplash(false);
-
-      // Navigate to the right place
-      if (user) {
-        router.replace("./(tabs)");     // absolute route to your tabs layout
-      } else {
-        router.replace("./register");   // absolute route to register page
-      }
-    };
-
-    init();
+      setKids(
+        users.filter(u => u.role === "kid").length
+          ? users.filter(u => u.role === "kid")
+          : demo
+      );
+    })();
   }, []);
 
-  // While splash is showing, render the animation
-  if (showSplash) return <SplashAnimation onFinish={() => {}} />;
-
-  // Once we navigate away this component unmounts, so we can return null
-  return null;
+  return (
+    <Carousel
+      width={CARD_WIDTH}
+      height={CARD_HEIGHT}
+      data={kids}
+      mode="horizontal-stack"
+      modeConfig={{
+        stackInterval: 18,   // spacing of the back cards
+        scaleInterval: 0.08, // how much the back cards shrink
+        opacityInterval: 0.25,
+      }}
+      style={styles.carousel}
+      defaultIndex={1} // start with second kid centered (optional)
+      panGestureHandlerProps={{ activeOffsetX: [-10, 10] }}
+      renderItem={({ item }) => (
+        <KidCard
+          data={item}
+          width={CARD_WIDTH}
+          onPress={() => router.push(`./kids/${item.id}`)}
+        />
+      )}
+    />
+  );
 }
+
+const styles = StyleSheet.create({
+  carousel: { flex: 1, justifyContent: "center", alignItems: "center" },
+});

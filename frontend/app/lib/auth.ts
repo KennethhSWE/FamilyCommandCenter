@@ -1,33 +1,49 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from "expo-file-system";
 
-const TOKEN_KEY = "@fcc_token";
-const USER_DATA_PATH = `${FileSystem.documentDirectory}users.json`;
+/* ------------------------------------------------------------------ */
+/* Keys                                                               */
+/* ------------------------------------------------------------------ */
+const USER_KEY  = "@fcc_user";   // single-family record
+const TOKEN_KEY = "@fcc_token";  // auth / session token
 
-export async function saveToken(token: string) {
+/* ------------------------------------------------------------------ */
+/* User helpers                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Returns `true` if a user record is stored. */
+export async function checkIfUsersExist(): Promise<boolean> {
+  const user = await AsyncStorage.getItem(USER_KEY);
+  return !!user;
+}
+
+/** Persist (or overwrite) the user record. */
+export async function saveUser(user: unknown): Promise<void> {
+  await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+/** Retrieve the saved user object, or `null` if none. */
+export async function getUser<T = any>(): Promise<T | null> {
+  const raw = await AsyncStorage.getItem(USER_KEY);
+  return raw ? (JSON.parse(raw) as T) : null;
+}
+
+/** Removes the stored user (useful for logout / reset). */
+export async function clearUser(): Promise<void> {
+  await AsyncStorage.removeItem(USER_KEY);
+}
+
+/* ------------------------------------------------------------------ */
+/* Token helpers (optional but handy)                                 */
+/* ------------------------------------------------------------------ */
+
+export async function saveToken(token: string): Promise<void> {
   await AsyncStorage.setItem(TOKEN_KEY, token);
 }
 
-export async function getToken() {
+export async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem(TOKEN_KEY);
 }
 
-export async function clearToken() {
+export async function clearToken(): Promise<void> {
   await AsyncStorage.removeItem(TOKEN_KEY);
-}
-
-// Check if any users exist in the users.json file
-export async function checkIfUsersExist(): Promise<boolean> {
-  try {
-    const fileInfo = await FileSystem.getInfoAsync(USER_DATA_PATH);
-    if (!fileInfo.exists) return false;
-
-    const content = await FileSystem.readAsStringAsync(USER_DATA_PATH);
-    const users = JSON.parse(content);
-
-    return Array.isArray(users) && users.length > 0;
-  } catch (err) {
-    console.warn("Error checking user data:", err);
-    return false;
-  }
 }
