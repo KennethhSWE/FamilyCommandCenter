@@ -9,8 +9,8 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
-import api from "./lib/api";        // default export in api.ts
-import { saveToken } from "./lib/auth";
+import api from "../src/lib/api";        // default export in api.ts
+import { saveToken } from "../src/lib/auth";
 
 export default function LoginScreen() {
   const router = useRouter();

@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { saveUser, saveToken } from "./lib/auth";
+import { saveUser, saveToken } from "../src/lib/auth";
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");

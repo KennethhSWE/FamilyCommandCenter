@@ -1,15 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import ChoreListItem from './ChoreListItem';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import ChoreListItem from "./ChoreListItem";
 
 interface Props {
   name: string;
-  chores: any[];
+  chores?: any[]; // ① make it optional
 }
 
-const KidCard = ({ name, chores }: Props) => {
+const KidCard = ({ name, chores = [] }: Props) => {
+  // ② default = []
   console.log("Rendering KidCard for", name, "with chores", chores.length);
-  
+
   return (
     <View style={styles.card}>
       <Text style={styles.kidName}>{name}</Text>
@@ -26,7 +27,7 @@ const KidCard = ({ name, chores }: Props) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginBottom: 20,
     borderRadius: 16,
     padding: 16,
@@ -34,13 +35,13 @@ const styles = StyleSheet.create({
   },
   kidName: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
   },
   noChores: {
     fontSize: 18,
-    fontStyle: 'italic',
-    color: '#666',
+    fontStyle: "italic",
+    color: "#666",
   },
 });
 

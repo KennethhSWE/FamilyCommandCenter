@@ -3,7 +3,7 @@ import React from "react";
 import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import SplashAnimation from "../components/SplashAnimation";   // keep your animation
-import { checkIfUsersExist } from "../lib/auth";
+import { checkIfUsersExist } from "../../src/lib/auth";
 
 // keep native splash visible
 SplashScreen.preventAutoHideAsync();
