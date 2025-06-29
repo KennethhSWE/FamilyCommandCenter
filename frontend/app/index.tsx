@@ -1,8 +1,9 @@
+// frontend/app/index.tsx
 import React, { useEffect, useState } from "react";
 import { Dimensions, StyleSheet } from "react-native";
 import Carousel from "react-native-reanimated-carousel";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+
 import KidCard from "./components/KidCard";
 
 interface Kid {
@@ -13,35 +14,41 @@ interface Kid {
   role: "kid" | "parent";
 }
 
-const USERS_KEY = "@fcc_users";
+/* ─────────────────────────── constants ─────────────────────────── */
 const { width } = Dimensions.get("window");
 const CARD_WIDTH  = width * 0.68;
 const CARD_HEIGHT = CARD_WIDTH * 1.25;
 
+/* Fallback demo kids if backend returns 0 kids (fresh DB) */
+const demoKids: Kid[] = [
+  { id: "1", name: "Austin",  points:  80, role: "kid" },
+  { id: "2", name: "Ella",    points: 120, role: "kid" },
+  { id: "3", name: "Lincoln", points:  65, role: "kid" },
+];
+
+/* ───────────────────────────── screen ──────────────────────────── */
 export default function KidsCarouselScreen() {
   const [kids, setKids] = useState<Kid[]>([]);
   const router = useRouter();
 
+  /* pull kids on first mount */
   useEffect(() => {
-    (async () => {
-      const raw = await AsyncStorage.getItem(USERS_KEY);
-      const users: Kid[] = raw ? JSON.parse(raw) : [];
-
-      // fallback demo list if storage empty
-      const demo = [
-        { id: "1", name: "Austin",  points:  80, role: "kid" },
-        { id: "2", name: "Ella",    points: 120, role: "kid" },
-        { id: "3", name: "Lincoln", points:  65, role: "kid" },
-      ];
-
-      setKids(
-        users.filter(u => u.role === "kid").length
-          ? users.filter(u => u.role === "kid")
-          : demo
-      );
-    })();
+    fetch("http://localhost:7070/api/users/kids")
+      .then((res) => res.json())
+      .then((data: Kid[]) => {
+        if (Array.isArray(data) && data.length) {
+          setKids(data);
+        } else {
+          setKids(demoKids);              // fallback if DB empty
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch kids:", err);
+        setKids(demoKids);                // fallback on network error
+      });
   }, []);
 
+  /* ──────────────────────── render UI ─────────────────────────── */
   return (
     <Carousel
       width={CARD_WIDTH}
@@ -49,24 +56,26 @@ export default function KidsCarouselScreen() {
       data={kids}
       mode="horizontal-stack"
       modeConfig={{
-        stackInterval: 18,   // spacing of the back cards
-        scaleInterval: 0.08, // how much the back cards shrink
+        stackInterval: 18,
+        scaleInterval: 0.08,
         opacityInterval: 0.25,
       }}
       style={styles.carousel}
-      defaultIndex={1} // start with second kid centered (optional)
+      defaultIndex={1}
       panGestureHandlerProps={{ activeOffsetX: [-10, 10] }}
       renderItem={({ item }) => (
         <KidCard
           data={item}
           width={CARD_WIDTH}
-          onPress={() => router.push(`./kids/${item.id}`)}
+          onPress={() => router.push(`/kids/${item.id}`)}
         />
       )}
     />
   );
 }
 
+/* ────────────────────────── styles ────────────────────────────── */
 const styles = StyleSheet.create({
   carousel: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
+

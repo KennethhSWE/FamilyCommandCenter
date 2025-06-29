@@ -8,6 +8,7 @@ module.exports = function (api) {
         {
           alias: {
             '@': './app',
+            "@lib": "./src/lib",
           },
         },
       ],

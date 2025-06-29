@@ -1,86 +1,72 @@
 import React, { useEffect, useState } from "react";
-import { Dimensions, StyleSheet } from "react-native";
+import { ActivityIndicator, Dimensions, StyleSheet, View } from "react-native";
 import Carousel from "react-native-reanimated-carousel";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+// Update the path below to the correct location of your api module, e.g.:
+import { Kid, getKids, getChoresByKid } from "src/lib/api";
 import KidCard from "../../components/KidCard";
-/* ------------------------------------------------------------------ */
-/* Types                                                              */
-/* ------------------------------------------------------------------ */
-interface Kid {
-  id: string;
-  name: string;
-  points: number;
-  avatar?: string;
-  role: "kid" | "parent";
-}
 
-/* ------------------------------------------------------------------ */
-/* Constants                                                          */
-/* ------------------------------------------------------------------ */
-const USERS_KEY = "@fcc_users";
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.68;
+const CARD_WIDTH  = width * 0.68;
 const CARD_HEIGHT = CARD_WIDTH * 1.25;
 
-/* ------------------------------------------------------------------ */
-/* Screen                                                              */
-/* ------------------------------------------------------------------ */
 export default function KidsCarouselScreen() {
-  const [kids, setKids] = useState<Kid[]>([]);
-  const router = useRouter();
+  const [kids, setKids] = useState<(Kid & { chores: any[] })[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  /* ------------------------- Load kids from storage ------------------------- */
   useEffect(() => {
-    (async () => {
-      const raw = await AsyncStorage.getItem(USERS_KEY);
-      const users: Kid[] = raw ? JSON.parse(raw) : [];
-
-      // type-guard so TS knows the filter returns Kid[]
-      const isKid = (u: Kid): u is Kid => u.role === "kid";
-      const storedKids = users.filter(isKid);
-
-      // fallback demo list
-      const demo: Kid[] = [
-        { id: "1", name: "Austin", points: 80, role: "kid" },
-        { id: "2", name: "Ella", points: 120, role: "kid" },
-        { id: "3", name: "Lincoln", points: 65, role: "kid" },
-      ];
-
-      setKids(storedKids.length ? storedKids : demo);
-    })();
+    const loadKids = async () => {
+      try {
+        const rawKids = await getKids();            // 1️⃣ pull kids
+        const withChores = await Promise.all(       // 2️⃣ attach chores
+          rawKids.map(async kid => ({
+            ...kid,
+            chores: await getChoresByKid(kid.id),
+          }))
+        );
+        setKids(withChores);
+      } catch (err) {
+        console.error("Failed to load kids:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadKids();
   }, []);
 
-  /* ----------------------------- Render ------------------------------------- */
+  if (loading) {
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!kids.length) {
+    return (
+      <View style={styles.loader}>
+        <KidCard name="No kids yet" chores={[]} />
+      </View>
+    );
+  }
+
   return (
     <Carousel
       width={CARD_WIDTH}
       height={CARD_HEIGHT}
       data={kids}
       mode="horizontal-stack"
-      modeConfig={{
-        stackInterval: 18,
-        scaleInterval: 0.08,
-        opacityInterval: 0.25,
-      }}
+      modeConfig={{ stackInterval: 18, scaleInterval: 0.08, opacityInterval: 0.25 }}
       style={styles.carousel}
-      defaultIndex={1}
-      pagingEnabled={true}
-      renderItem={({ item }: { item: Kid }) => (
-        <KidCard
-          name={item.name}
-          chores={
-            Array.isArray((item as any).chores) ? (item as any).chores : []
-          } // ③ guarantee array
-        />
+      defaultIndex={0}
+      gestureConfig={{ activeOffsetX: [-10, 10] }}
+      renderItem={({ item }) => (
+        <KidCard name={item.name} chores={item.chores ?? []} />
       )}
     />
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Styles                                                             */
-/* ------------------------------------------------------------------ */
 const styles = StyleSheet.create({
   carousel: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loader:   { flex: 1, justifyContent: "center", alignItems: "center" },
 });

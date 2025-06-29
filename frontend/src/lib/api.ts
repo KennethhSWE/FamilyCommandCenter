@@ -1,13 +1,37 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 
-const TOKEN_KEY = "@fcc_token";
-const USER_KEY  = "@fcc_user";          // NEW – single-user storage
+const api = axios.create({
+  baseURL: "http://localhost:7070/api", // adjust if your port / prefix differs
+  timeout: 8000,
+});
 
-export async function checkIfUsersExist(): Promise<boolean> {
-  const user = await AsyncStorage.getItem(USER_KEY);
-  return !!user;                         // returns true if non-null / non-empty
+/* ------------------------------------------------------------------ */
+/* Types that match your Postgres rows                                */
+/* ------------------------------------------------------------------ */
+export interface Kid {
+  id: string;
+  name: string;
+  avatar?: string;
+  points: number;
+  role: "kid";
 }
 
-export async function saveUser(user: any) {
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+export interface Chore {
+  id: string;
+  userId: string;
+  title: string;
+  completed: boolean;
 }
+
+/* ------------------------------------------------------------------ */
+/* API calls                                                          */
+/* ------------------------------------------------------------------ */
+export const getKids = async (): Promise<Kid[]> => {
+  const res = await api.get<Kid[]>("/users/kids");
+  return res.data;
+};
+
+export const getChoresByKid = async (userId: string): Promise<Chore[]> => {
+  const res = await api.get<Chore[]>(`/chores`, { params: { userId } });
+  return res.data;
+};
