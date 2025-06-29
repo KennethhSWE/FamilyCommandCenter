@@ -22,6 +22,7 @@ import familycommandcenter.model.RewardDAO;
 import familycommandcenter.model.Redemption;
 import familycommandcenter.model.RedemptionDAO;
 import familycommandcenter.util.AuthMiddleware;
+import familycommandcenter.controllers.AssignController;
 
 public class App {
     public static void main(String[] args) throws SQLException {
@@ -295,6 +296,14 @@ public class App {
             } catch (Exception e) {
                 ctx.status(500).result("Error fetching overdue chores: " + e.getMessage());
             }
+        });
+
+        // Assign chores automatically to children based on age ranges
+        ChoreDataService choreDataService = new ChoreDataService();
+        AssignController assignController = new AssignController(userDao, choreDataService);
+        
+        app.post("/api/assign/daily", ctx -> {
+        assignController.assignDailyChores();
         });
 
         // Points bank endpoint

@@ -291,4 +291,28 @@ public class ChoreDataService {
             stmt.executeUpdate();
         }
     }
+
+    public List<Chore> findByUserId(String userId) throws SQLException {
+        String sql = "SELECT * FROM chores WHERE assigned_to = ?";
+        List<Chore> list = new ArrayList<>();
+
+        try (Connection conn = Database.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, userId);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Chore chore = new Chore();
+                chore.setId(rs.getInt("id"));
+                chore.setName(rs.getString("name"));
+                chore.setAssignedTo(rs.getString("assigned_to"));
+                chore.setComplete(rs.getBoolean("is_complete"));
+                chore.setDueDate(rs.getString("due_date"));
+                chore.setPoints(rs.getInt("points"));
+                list.add(chore);
+            }
+        }
+        return list; 
+    }
 }

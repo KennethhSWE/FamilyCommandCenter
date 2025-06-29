@@ -75,5 +75,26 @@ public class UserDAO {
 
         return users;
     }
-}
 
+    public List<User> getUsersByRole(String role) throws SQLException {
+    String sql = "SELECT * FROM users WHERE role = ?";
+    List<User> list = new ArrayList<>();
+
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setString(1, role);
+        ResultSet rs = stmt.executeQuery();
+
+        while (rs.next()) {
+            int id = rs.getInt("id");
+            String uname = rs.getString("username");
+            String hash = rs.getString("password_hash");
+            LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
+            int age = rs.getInt("age");
+
+            list.add(new User(id, uname, hash, createdAt, age));
+        }
+    }
+
+        return list;   
+    }
+}
