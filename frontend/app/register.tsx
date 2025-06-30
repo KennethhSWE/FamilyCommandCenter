@@ -1,64 +1,89 @@
-// app/register.tsx
+// frontend/app/register.tsx
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
-import { useRouter } from "expo-router";
-import { saveUser, saveToken } from "../src/lib/auth";
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import { router } from "expo-router";
+import { saveToken } from "../src/lib/auth";
 
 export default function RegisterScreen() {
-  const [name, setName] = useState("");
-  const router = useRouter();
+  const [adminName, setAdminName] = useState("");
+  const [pin, setPin] = useState("");
 
   const handleRegister = async () => {
-    if (!name.trim()) {
-      Alert.alert("Please enter a name.");
+    if (!adminName || !pin) {
+      Alert.alert("Missing Info", "Please enter your name and a 4-digit PIN.");
       return;
     }
 
     try {
-      // 1️⃣ Save the user record (single-family design)
-      await saveUser({ name, createdAt: Date.now() });
+      const res = await fetch("http://192.168.1.122:7070/api/household", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminName, pin }),
+      });
 
-      // 2️⃣ (Optional) stash a placeholder auth token
-      await saveToken("dummy-token");
+      if (!res.ok) {
+        throw new Error(`HTTP error ${res.status}`);
+      }
 
-      // 3️⃣ Navigate straight to the Kids tab
-      router.replace("./(tabs)/kids");
-    } catch (error) {
-      console.error("Registration failed:", error);
-      Alert.alert("Error", "Something went wrong while registering.");
+      const { token } = await res.json();
+      await saveToken(token);
+
+      router.replace("/(tabs)/kids");
+    } catch (err) {
+      console.error("Registration error:", err);
+      Alert.alert("Error", "Failed to register. Please try again.");
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Register Your Family</Text>
+      <Text style={styles.label}>Parent Name</Text>
       <TextInput
         style={styles.input}
-        placeholder="Enter your name"
-        value={name}
-        onChangeText={setName}
+        placeholder="e.g. Danielle"
+        value={adminName}
+        onChangeText={setAdminName}
       />
-      <Button title="Create Account" onPress={handleRegister} />
+
+      <Text style={styles.label}>4-digit PIN</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="e.g. 1234"
+        keyboardType="numeric"
+        secureTextEntry
+        value={pin}
+        maxLength={4}
+        onChangeText={setPin}
+      />
+
+      <Button title="Register & Begin" onPress={handleRegister} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    padding: 24,
     justifyContent: "center",
-    padding: 20,
+    flex: 1,
   },
-  title: {
-    fontSize: 24,
-    marginBottom: 16,
-    textAlign: "center",
+  label: {
+    fontSize: 18,
+    marginTop: 16,
   },
   input: {
-    borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 12,
-    marginBottom: 16,
+    borderWidth: 1,
+    padding: 10,
+    fontSize: 18,
+    marginTop: 4,
+    borderRadius: 8,
   },
 });

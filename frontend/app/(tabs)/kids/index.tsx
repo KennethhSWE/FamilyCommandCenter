@@ -16,8 +16,8 @@ export default function KidsCarouselScreen() {
   useEffect(() => {
     const loadKids = async () => {
       try {
-        const rawKids = await getKids();            // 1️⃣ pull kids
-        const withChores = await Promise.all(       // 2️⃣ attach chores
+        const rawKids = await getKids();            // 1 pull kids
+        const withChores = await Promise.all(       // 2️ attach chores
           rawKids.map(async kid => ({
             ...kid,
             chores: await getChoresByKid(kid.id),
