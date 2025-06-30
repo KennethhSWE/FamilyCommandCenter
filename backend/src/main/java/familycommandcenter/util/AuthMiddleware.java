@@ -2,30 +2,27 @@ package familycommandcenter.util;
 
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
 
 public class AuthMiddleware implements Handler {
+
     @Override
     public void handle(Context ctx) throws Exception {
-        String authHeader = ctx.header("Authorization");
+        String header = ctx.header("Authorization");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            ctx.status(401).result("Missing or invalid Authorization header");
+        if (header == null || !header.startsWith("Bearer ")) {
+            ctx.status(401).result("Missing token");
             return;
         }
+        String token = header.substring(7);
 
-        String token = authHeader.substring(7); // this removes "Bearer " prefix
-
-        if (!JwtUtil.validateToken(token)) {
-            ctx.status(401).result("Invalid or expired token");
-            return;
+        try {
+            Jws<Claims> jws = JwtUtil.verify(token);   // ✅ new call
+            String username = jws.getBody().getSubject();
+            ctx.attribute("username", username);       // save for handlers
+        } catch (Exception e) {
+            ctx.status(401).result("Invalid token");
         }
-
-        String username = JwtUtil.getUsernameFromToken(token);
-        if (username == null) {
-            ctx.status(401).result("Could not extract user from token");
-            return;
-        }
-
-        ctx.attribute("username", username); // Attach to context
     }
 }

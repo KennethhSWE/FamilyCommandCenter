@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import javax.swing.tree.ExpandVetoException;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 
@@ -98,6 +100,47 @@ public class App {
 
             String jwt = JwtUtil.generateToken(username);
             ctx.json(Map.of("token", jwt));
+        });
+
+        /**
+         * First time users met with registration where they fill it out.
+         * Body: { "adminName" : "Kenneth", "pin" : 1234 }
+         * this creates a new admin user and returns a token.
+         */
+        app.post("/api/household", ctx -> {
+            Map<String, String> body = new ObjectMapper()
+                    .readValue(ctx.body(), new TypeReference<>() {
+                    });
+
+            String adminName = body.get("adminName");
+            String pin = body.get("pin");
+
+            // validation loop
+            if (adminName == null || pin == null || adminName.isBlank() || pin.length() < 4) {
+                ctx.status(400).result("Missing or invalid adminName / pin");
+                return;
+            }
+
+            // checking if user doesn't already exist in db'
+            if (userDao.getUserByUsername(adminName).isPresent()) {
+                ctx.status(400).result("Admin already exists");
+                return;
+            }
+
+            // Creating the admin user
+            User newAdmin = new User(adminName,
+                    PasswordUtils.hashPassword(pin)
+            );
+           
+            boolean ok = userDao.registerUser(newAdmin, "admin");
+            if (!ok) {
+                ctx.status(500).result("Failed to create admin user");
+                return;
+            }
+
+            //Issue the JWT token
+            String token = JwtUtil.generateToken(adminName, "admin");
+            ctx.json(Map.of("token", token));
         });
 
         // Reward Redemption Endpoint
@@ -301,9 +344,9 @@ public class App {
         // Assign chores automatically to children based on age ranges
         ChoreDataService choreDataService = new ChoreDataService();
         AssignController assignController = new AssignController(userDao, choreDataService);
-        
+
         app.post("/api/assign/daily", ctx -> {
-        assignController.assignDailyChores();
+            assignController.assignDailyChores();
         });
 
         // Points bank endpoint
@@ -355,6 +398,21 @@ public class App {
                 ctx.status(200).result("Chore rejection saved.");
             } else {
                 ctx.status(404).result("Chore not found.");
+            }
+        });
+
+        app.get("api/auth/validate", ctx -> {
+            String header = ctx.header("Authorization");
+            if (header == null || !header.startsWith("Bearer ")) {
+                ctx.status(401);
+                return;
+            }
+            String token = header.substring(7);
+            try {
+                JwtUtil.verify(token);
+                ctx.status(200).result("OK");
+            } catch (Exception ex) {
+                ctx.status(401).result("Invalid token");
             }
         });
     }
