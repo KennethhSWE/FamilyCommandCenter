@@ -11,7 +11,7 @@ import {
 export interface Kid {
   id: string;
   name: string;
-  points: number;
+  points?: number;
   avatar?: string;           // optional avatar URL / local asset
   role: "kid" | "parent";
 }

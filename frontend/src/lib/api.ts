@@ -1,37 +1,32 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:7070/api", // adjust if your port / prefix differs
+  baseURL: "http://192.168.1.122:7070/api", // adjust if your port / prefix differs
   timeout: 8000,
 });
 
 /* ------------------------------------------------------------------ */
 /* Types that match your Postgres rows                                */
 /* ------------------------------------------------------------------ */
+/* frontend/src/lib/api.ts */
 export interface Kid {
   id: string;
   name: string;
+  role: "kid" | "parent";
+  points?: number;
   avatar?: string;
-  points: number;
-  role: "kid";
 }
 
-export interface Chore {
-  id: string;
-  userId: string;
-  title: string;
-  completed: boolean;
+const API = "http://192.168.1.122:7070"; // ← your PC’s LAN IP
+
+export async function getKids(): Promise<Kid[]> {
+  const res = await fetch(`${API}/api/users/kids`);
+  if (!res.ok) throw new Error(`getKids ${res.status}`);
+  return res.json();
 }
 
-/* ------------------------------------------------------------------ */
-/* API calls                                                          */
-/* ------------------------------------------------------------------ */
-export const getKids = async (): Promise<Kid[]> => {
-  const res = await api.get<Kid[]>("/users/kids");
-  return res.data;
-};
-
-export const getChoresByKid = async (userId: string): Promise<Chore[]> => {
-  const res = await api.get<Chore[]>(`/chores`, { params: { userId } });
-  return res.data;
-};
+export async function getChoresByKid(kidId: string) {
+  const res = await fetch(`${API}/api/chores?userId=${kidId}`);
+  if (!res.ok) throw new Error(`getChores ${res.status}`);
+  return res.json();
+}

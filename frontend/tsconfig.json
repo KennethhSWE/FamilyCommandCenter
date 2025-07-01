@@ -4,7 +4,8 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["app/*"]
+      "@/*": ["app/*"],
+       "react-native-reanimated-carousel": ["types/react-native-reanimated-carousel"]
     }
   },
   "include": [

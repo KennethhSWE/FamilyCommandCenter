@@ -1,5 +1,5 @@
-// app/components/SplashAnimation.tsx
-import React, { useEffect, useState } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -18,21 +18,24 @@ const loadingMessages = [
 ];
 
 interface SplashProps {
-  onFinish?: () => void; // ✅ make it optional
+  onFinish?: () => void; // 
 }
 
 export default function SplashAnimation({ onFinish }: SplashProps) {
   const [messageIndex, setMessageIndex] = useState(0);
-  const progress = new Animated.Value(0);
+  const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    SplashScreen.hideAsync();
     Animated.timing(progress, {
       toValue: 1,
       duration: 4000,
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: false,
     }).start(() => {
-      if (onFinish) onFinish(); // ✅ safely call if defined
+      setTimeout(() => {
+        if (onFinish) onFinish();
+      }, 1000);                       // shows splash screen for 1 second more. 
     });
 
     const interval = setInterval(() => {
