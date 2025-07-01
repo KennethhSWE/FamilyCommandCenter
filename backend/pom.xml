@@ -76,11 +76,11 @@
             <version>3.2.5</version>
         </dependency>
 
-        <!-- PostgreSQL Driver -->
+        <!-- Read key/value pairs from .env -->
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.7.2</version> <!-- or latest -->
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>3.0.0</version>
         </dependency>
     </dependencies>
 

@@ -18,9 +18,9 @@ public class AuthMiddleware implements Handler {
         String token = header.substring(7);
 
         try {
-            Jws<Claims> jws = JwtUtil.verify(token);   // ✅ new call
+            Jws<Claims> jws = JwtUtil.verify(token); 
             String username = jws.getBody().getSubject();
-            ctx.attribute("username", username);       // save for handlers
+            ctx.attribute("username", username);       
         } catch (Exception e) {
             ctx.status(401).result("Invalid token");
         }

@@ -415,5 +415,13 @@ public class App {
                 ctx.status(401).result("Invalid token");
             }
         });
+
+        app.get("/api/users", ctx -> {
+            ctx.json(userDao.getAllUsers());
+        });
+
+        app.get("/api/users/kids", ctx -> {
+            ctx.json(userDao.getUsersByRole("kid"));
+        });
     }
 }
