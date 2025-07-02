@@ -3,14 +3,16 @@ package familycommandcenter;
 import io.javalin.Javalin;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import javax.swing.tree.ExpandVetoException;
+import javax.sql.DataSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.zaxxer.hikari.HikariDataSource;
 
 import familycommandcenter.model.User;
 import familycommandcenter.model.UserDAO;
@@ -28,11 +30,14 @@ import familycommandcenter.controllers.AssignController;
 
 public class App {
     public static void main(String[] args) throws SQLException {
-        Connection conn = Database.getConnection();
-        if (conn == null) {
-            System.err.println("Failed to connect to PostgreSQL");
-            return;
-        }
+
+        // Construct Data access object 
+        DataSource ds = Database.getDataSource();
+        Connection conn = ds.getConnection();
+        UserDAO userDao = new UserDAO(ds);
+        PointsBankDAO pointsBankDAO = new PointsBankDAO(conn);
+        RewardDAO rewardDAO = new RewardDAO(conn);
+        RedemptionDAO redemptionDAO = new RedemptionDAO(conn);
 
         Javalin app = Javalin.create(config -> {
             config.plugins.enableCors(cors -> cors.add(it -> it.anyHost()));
@@ -40,44 +45,32 @@ public class App {
 
         System.out.println("Javalin server started on port 7070");
 
-        UserDAO userDao = new UserDAO(conn);
-        PointsBankDAO pointsBankDAO = new PointsBankDAO(conn);
-        RewardDAO rewardDAO = new RewardDAO(conn);
-        RedemptionDAO redemptionDAO = new RedemptionDAO(conn);
-
         app.post("/api/register", ctx -> {
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {
-            });
+            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {});
             String username = body.get("username");
             String password = body.get("password");
 
-            if (username == null || password == null || username.isBlank() || password.length() < 6) {
-                ctx.status(400).result("Invalid username or password (must be at least 6 characters)");
-                return;
+            if (username == null || password == null || username.isBlank() || password.length() < 4) {
+                ctx.status(400).result("Invalid username or password (must be at least 4 characters)");
+                return; 
             }
 
-            Optional<User> existing = userDao.getUserByUsername(username);
+            Optional<User> existing = userDao.findByUsername(username);
             if (existing.isPresent()) {
                 ctx.status(409).result("Username already exists");
                 return;
             }
 
             String hashed = PasswordUtils.hashPassword(password);
-            User newUser = new User(username, hashed);
-            boolean success = userDao.registerUser(newUser);
-
-            if (success) {
-                ctx.status(201).result("User registered");
-            } else {
-                ctx.status(500).result("Registration failed");
-            }
+            User newUser = new User(0, username, hashed, LocalDateTime.now(), 0, "parent");
+            userDao.save(newUser);
+            ctx.status(201).result("User registered");
         });
 
         app.post("/api/login", ctx -> {
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {
-            });
+            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {});
             String username = body.get("username");
             String password = body.get("password");
 
@@ -86,7 +79,7 @@ public class App {
                 return;
             }
 
-            Optional<User> userOpt = userDao.getUserByUsername(username);
+            Optional<User> userOpt = userDao.findByUsername(username);
             if (userOpt.isEmpty()) {
                 ctx.status(401).result("Invalid credentials");
                 return;
@@ -98,56 +91,35 @@ public class App {
                 return;
             }
 
-            String jwt = JwtUtil.generateToken(username);
+            String jwt = JwtUtil.generateToken(username, user.getRole());
             ctx.json(Map.of("token", jwt));
         });
 
-        /**
-         * First time users met with registration where they fill it out.
-         * Body: { "adminName" : "Kenneth", "pin" : 1234 }
-         * this creates a new admin user and returns a token.
-         */
         app.post("/api/household", ctx -> {
-            Map<String, String> body = new ObjectMapper()
-                    .readValue(ctx.body(), new TypeReference<>() {
-                    });
-
+            Map<String, String> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {});
             String adminName = body.get("adminName");
             String pin = body.get("pin");
 
-            // validation loop
             if (adminName == null || pin == null || adminName.isBlank() || pin.length() < 4) {
                 ctx.status(400).result("Missing or invalid adminName / pin");
                 return;
             }
 
-            // checking if user doesn't already exist in db'
-            if (userDao.getUserByUsername(adminName).isPresent()) {
+            if (userDao.findByUsername(adminName).isPresent()) {
                 ctx.status(400).result("Admin already exists");
                 return;
             }
 
-            // Creating the admin user
-            User newAdmin = new User(adminName,
-                    PasswordUtils.hashPassword(pin)
-            );
-           
-            boolean ok = userDao.registerUser(newAdmin, "admin");
-            if (!ok) {
-                ctx.status(500).result("Failed to create admin user");
-                return;
-            }
+            User newAdmin = new User(0, adminName, PasswordUtils.hashPassword(pin), LocalDateTime.now(), 0, "admin");
+            userDao.save(newAdmin);
 
-            //Issue the JWT token
             String token = JwtUtil.generateToken(adminName, "admin");
             ctx.json(Map.of("token", token));
         });
 
-        // Reward Redemption Endpoint
         app.post("/api/rewards/redeem", ctx -> {
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {
-            });
+            Map<String, String> body = mapper.readValue(ctx.body(), new TypeReference<>() {});
             String username = body.get("username");
             int rewardId = Integer.parseInt(body.get("rewardId"));
 
@@ -161,7 +133,6 @@ public class App {
             int userPoints = pointsBankDAO.getPoints(username);
 
             if (userPoints < reward.getCost()) {
-                // DEBUG statment to see user points and reward cost is terminal
                 System.out.println("DEBUG: User points: " + userPoints + ", Reward cost: " + reward.getCost());
                 ctx.status(400).result("Not enough points for this reward");
                 return;
@@ -173,7 +144,6 @@ public class App {
                 redemption.setRewardId(rewardId);
                 redemption.setStatus("pending");
                 redemptionDAO.createRedemption(redemption);
-
                 ctx.status(200).result("Reward redemption requested and pending approval");
             } else {
                 pointsBankDAO.deductPoints(username, reward.getCost());
@@ -183,27 +153,22 @@ public class App {
                 redemption.setRewardId(rewardId);
                 redemption.setStatus("approved");
                 redemptionDAO.createRedemption(redemption);
-
                 ctx.status(200).result("Reward redeemed successfully");
             }
-
         });
 
-        // Approve or reject a redemption request
         app.put("/api/rewards/approve", ctx -> {
-            Map<String, Integer> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {
-            });
+            Map<String, Integer> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {});
             int redemptionId = body.get("redemptionId");
 
             boolean success = redemptionDAO.approveRedemption(redemptionId);
             if (success) {
                 ctx.status(200).result("Redemption approved and points deducted");
             } else {
-                ctx.status(400).result("Approval failed (possibly already approved or insufficient points)");
+                ctx.status(400).result("Approval failed");
             }
         });
 
-        // List available rewards per user
         app.get("/api/rewards/available/{username}", ctx -> {
             String username = ctx.pathParam("username");
             try {
@@ -220,30 +185,22 @@ public class App {
             }
         });
 
-        // List total points by user
         app.get("/api/points/{username}", ctx -> {
             String username = ctx.pathParam("username");
-            PointsBankDAO pointsDAO = new PointsBankDAO(conn);
-            int points = pointsDAO.getPoints(username);
+            int points = pointsBankDAO.getPoints(username);
             ctx.json(Map.of("userName", username, "points", points));
         });
 
-        // Rewards listing
         app.get("/api/rewards", ctx -> {
             List<Reward> rewards = rewardDAO.getAllRewards();
             ctx.json(rewards);
         });
 
-        // Redemption list for user
         app.get("/api/rewards/redemptions/{username}", ctx -> {
             String username = ctx.pathParam("username");
             List<Redemption> redemptions = redemptionDAO.getRedemptionsForUser(username);
             ctx.json(redemptions);
         });
-
-        // Redemption approval endpoint to approve or reject a request for redemption
-
-        // -- Existing endpoints unchanged below --
 
         app.get("/", ctx -> ctx.result("Family Command Center is LIVE!"));
 
@@ -253,7 +210,6 @@ public class App {
             ctx.json(new String[] { "Take out the trash", "Feed the dog", "Clean the living room" });
         });
 
-        // Get chores by user endpoint
         app.get("/api/chores/by-user", ctx -> {
             try {
                 Map<String, List<Chore>> grouped = ChoreDataService.getChoresGroupedByUser();
@@ -263,7 +219,6 @@ public class App {
             }
         });
 
-        // Add chore endpoint
         app.post("/api/chores", ctx -> {
             Chore newChore = ctx.bodyAsClass(Chore.class);
             try {
@@ -277,14 +232,12 @@ public class App {
             }
         });
 
-        // Delete chore endpoint
         app.delete("/api/chores/{id}", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
             ChoreDataService.deleteChore(id);
             ctx.status(204);
         });
 
-        // Mark chore as complete endpoint
         app.put("/api/chores/{id}/complete", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
             try {
@@ -295,7 +248,6 @@ public class App {
             }
         });
 
-        // Update chore endpoint
         app.patch("/api/chores/{id}", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
             Chore updatedChore = ctx.bodyAsClass(Chore.class);
@@ -311,7 +263,6 @@ public class App {
             }
         });
 
-        // Points endpoint
         app.get("/api/chores/points", ctx -> {
             try {
                 Map<String, Integer> points = ChoreDataService.getTotalPointsByUser();
@@ -321,7 +272,6 @@ public class App {
             }
         });
 
-        // Today's chores endpoint
         app.get("/api/chores/today", ctx -> {
             try {
                 List<Chore> todayChores = ChoreDataService.getChoresDueToday();
@@ -331,7 +281,6 @@ public class App {
             }
         });
 
-        // Overdue chores endpoint
         app.get("/api/chores/overdue", ctx -> {
             try {
                 List<Chore> overdueChores = ChoreDataService.getOverdueChores();
@@ -341,7 +290,6 @@ public class App {
             }
         });
 
-        // Assign chores automatically to children based on age ranges
         ChoreDataService choreDataService = new ChoreDataService();
         AssignController assignController = new AssignController(userDao, choreDataService);
 
@@ -349,7 +297,6 @@ public class App {
             assignController.assignDailyChores();
         });
 
-        // Points bank endpoint
         app.get("/api/points-bank", ctx -> {
             try {
                 Map<String, Integer> pointsBank = ChoreDataService.getAllPointsBank();
@@ -359,11 +306,9 @@ public class App {
             }
         });
 
-        // Secure routes
         app.before("/api/chores/*", new AuthMiddleware());
         app.before("/api/points-bank", new AuthMiddleware());
 
-        // chore request completion
         app.put("api/chores/request-complete/{id}", ctx -> {
             int choreId = Integer.parseInt(ctx.pathParam("id"));
             try {
@@ -375,7 +320,6 @@ public class App {
             }
         });
 
-        // Chore verification
         app.patch("/api/chores/{id}/verify", ctx -> {
             int id = Integer.parseInt(ctx.pathParam("id"));
             try {
@@ -392,8 +336,8 @@ public class App {
             int id = Integer.parseInt(ctx.pathParam("id"));
             Chore chore = ChoreDataService.getChoreById(id);
             if (chore != null) {
-                chore.setRequestedComplete(false); // send it back to the kid
-                chore.setComplete(false); // ensure it is not marked done
+                chore.setRequestedComplete(false);
+                chore.setComplete(false);
                 ChoreDataService.updateChore(chore);
                 ctx.status(200).result("Chore rejection saved.");
             } else {
@@ -417,7 +361,7 @@ public class App {
         });
 
         app.get("/api/users", ctx -> {
-            ctx.json(userDao.getAllUsers());
+            ctx.json(userDao.findAll());
         });
 
         app.get("/api/users/kids", ctx -> {

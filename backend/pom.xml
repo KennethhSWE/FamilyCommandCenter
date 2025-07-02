@@ -1,6 +1,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>familycommandcenter</groupId>
@@ -35,16 +35,14 @@
             <version>5.6.1</version>
         </dependency>
 
-        <!--jbCrypt
-        for password hashing logic-->
+        <!-- jBCrypt for password hashing -->
         <dependency>
             <groupId>org.mindrot</groupId>
             <artifactId>jbcrypt</artifactId>
             <version>0.4</version>
         </dependency>
 
-        <!--JWT
-        dependacy for statless but secure login-->
+        <!-- JWT for stateless login -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -62,6 +60,7 @@
             <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
+
         <!-- Spring Boot Starter Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -69,14 +68,14 @@
             <version>3.2.5</version>
         </dependency>
 
-        <!-- Spring Boot Starter JDBC (for DB connection) -->
+        <!-- Spring Boot Starter JDBC -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
             <version>3.2.5</version>
         </dependency>
 
-        <!-- Read key/value pairs from .env -->
+        <!-- Dotenv for .env file loading -->
         <dependency>
             <groupId>io.github.cdimascio</groupId>
             <artifactId>dotenv-java</artifactId>
@@ -96,7 +95,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Run your app from CLI -->
+            <!-- Exec plugin to run main app -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>

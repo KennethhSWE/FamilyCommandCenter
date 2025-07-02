@@ -5,6 +5,8 @@ import familycommandcenter.model.Chore;
 import familycommandcenter.model.UserDAO;
 import familycommandcenter.model.ChoreDataService;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.sql.SQLException;
@@ -17,21 +19,29 @@ public class UserController {
     private final UserDAO userDAO;
     private final ChoreDataService choreService;
 
-    // Spring will autowire these because UserDAO and ChoreDataService are @Component/@Repository
     public UserController(UserDAO userDAO, ChoreDataService choreService) {
         this.userDAO = userDAO;
         this.choreService = choreService;
     }
 
-    /** GET  /api/users/kids  — return every user whose role == "kid" */
-    @GetMapping("/users/kids")
-    public List<User> getKids() throws SQLException {
-        return userDAO.getUsersByRole("kid");
+    // GET /api/users/kids - Return users with role "kid"
+    @GetMapping("/kids")
+    public ResponseEntity<List<User>> getKids() throws SQLException {
+        List<User> kids = userDAO.getUsersByRole("kid");
+        return ResponseEntity.ok(kids);
     }
 
-    /** GET  /api/chores?userId=123  — return all chores for that kid */
+    // GET /api/users/chores?userId=123 - Return chores for specific user
     @GetMapping("/chores")
-    public List<Chore> getChores(@RequestParam String userId) throws SQLException {
-        return choreService.findByUserId(userId);
+    public ResponseEntity<List<Chore>> getChores(@RequestParam String userId) throws SQLException {
+        List<Chore> chores = choreService.findByUserId(userId);
+        return ResponseEntity.ok(chores);
+    }
+
+    // POST /api/users/register - Register a new user
+    @PostMapping("/register")
+    public ResponseEntity<User> registerUser(@RequestBody User newUser) throws SQLException {
+        userDAO.save(newUser);
+        return ResponseEntity.status(HttpStatus.CREATED).body(newUser);
     }
 }

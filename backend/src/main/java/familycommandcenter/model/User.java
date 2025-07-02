@@ -8,20 +8,16 @@ public class User {
     private String passwordHash;
     private LocalDateTime createdAt;
     private int age;
+    private String role; 
 
     // Constructor
-    public User(int id, String username, String passwordHash, LocalDateTime createdAt, int age) {
+    public User(int id, String username, String passwordHash, LocalDateTime createdAt, int age, String role) {
         this.id = id;
         this.username = username;
         this.passwordHash = passwordHash;
         this.createdAt = createdAt;
         this.age = age;
-    }
-
-    public User(String username, String passwordHash) {
-        this.username = username;
-        this.passwordHash = passwordHash;
-        this.createdAt = LocalDateTime.now();
+        this.role = role;
     }
 
     // Getters & Setters
@@ -63,5 +59,13 @@ public class User {
 
     public void setAge(int age) {
         this.age = age; 
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }
