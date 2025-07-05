@@ -1,36 +1,33 @@
 // frontend/app/index.tsx
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
-import { getToken } from "../src/lib/auth";
+import { getToken, getHouseholdId } from "../src/lib/auth";
 import SplashAnimation from "./components/SplashAnimation";
 
-/**
- * 1️.  Show animated splash first.
- * 2️.  While it runs, decide where we’re going.
- * 3️.  When Splash calls onFinish → redirect.
- */
+type Dest = "/(tabs)/kids" | "/register";
+
 export default function Index() {
-  const [dest, setDest] = useState<"/(tabs)/kids" | "/register" | null>(null);
+  const [dest, setDest] = useState<Dest | null>(null);
   const [splashDone, setSplashDone] = useState(false);
 
-  // Decide destination once
   useEffect(() => {
     (async () => {
       try {
         const token = await getToken();
-        setDest(token ? "/(tabs)/kids" : "/register");
+        const householdId = await getHouseholdId();
+
+        setDest(token && householdId ? "/(tabs)/kids" : "/register");
       } catch (err) {
-        console.error("Token check failed:", err);
+        console.error("Startup check failed:", err);
         setDest("/register");
       }
     })();
   }, []);
 
-  /* -------------- render -------------- */
   if (!splashDone || dest === null) {
     return <SplashAnimation onFinish={() => setSplashDone(true)} />;
   }
 
-  // Splash finished & we know where to go
-  return <Redirect href={dest} />;
+  return <Redirect href={{ pathname: dest ?? "/register" }} />;
+
 }

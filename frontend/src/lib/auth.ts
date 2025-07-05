@@ -1,13 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 
-// Keys – only letters, numbers, ., -,
+// Keys – only letters, numbers, ., -
 const TOKEN_KEY = "fcc_token";
-const USER_KEY  = "fcc_user";
-
+const USER_KEY = "fcc_user";
+const HOUSEHOLD_KEY = "fcc_householdId";   
 
 // User helpers (AsyncStorage)
-
 export async function checkIfUsersExist(): Promise<boolean> {
   const user = await AsyncStorage.getItem(USER_KEY);
   return !!user;
@@ -37,4 +36,17 @@ export async function getToken(): Promise<string | null> {
 
 export async function clearToken(): Promise<void> {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
+}
+
+// ✅ HouseholdId helpers (AsyncStorage)    
+export async function saveHouseholdId(id: string): Promise<void> {
+  await AsyncStorage.setItem(HOUSEHOLD_KEY, id);
+}
+
+export async function getHouseholdId(): Promise<string | null> {
+  return AsyncStorage.getItem(HOUSEHOLD_KEY);
+}
+
+export async function clearHouseholdId(): Promise<void> {
+  await AsyncStorage.removeItem(HOUSEHOLD_KEY);
 }
