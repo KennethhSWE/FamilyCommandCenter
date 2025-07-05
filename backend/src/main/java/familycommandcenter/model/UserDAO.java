@@ -25,8 +25,8 @@ public class UserDAO {
      */
     public void save(User u) throws SQLException {
         final String sql = """
-            INSERT INTO users (username, password_hash, age, role, created_at)
-            VALUES (?,?,?,?,?)
+            INSERT INTO users (username, password_hash, age, role, created_at, household_id)
+            VALUES (?,?,?,?,?,?)
             """;
 
         try (Connection conn = dataSource.getConnection();
@@ -42,6 +42,7 @@ public class UserDAO {
                                 ? u.getCreatedAt()
                                 : LocalDateTime.now();
             ps.setTimestamp(5, Timestamp.valueOf(ts));
+            ps.setObject   (6, u.gethouseholdId(), java.sql.Types.OTHER);     
             
             ps.executeUpdate();
         }
@@ -112,6 +113,8 @@ public class UserDAO {
                 rs.getString("password_hash"),
                 rs.getTimestamp("created_at").toLocalDateTime(),
                 rs.getInt("age"),
-                rs.getString("role"));
+                rs.getString("role"),
+                rs.getObject("household_id", java.util.UUID.class)
+        );
     }
 }

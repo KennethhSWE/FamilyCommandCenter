@@ -5,12 +5,15 @@ import familycommandcenter.model.Chore;
 import familycommandcenter.model.UserDAO;
 import familycommandcenter.model.ChoreDataService;
 
+import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -40,8 +43,24 @@ public class UserController {
 
     // POST /api/users/register - Register a new user
     @PostMapping("/register")
-    public ResponseEntity<User> registerUser(@RequestBody User newUser) throws SQLException {
-        userDAO.save(newUser);
-        return ResponseEntity.status(HttpStatus.CREATED).body(newUser);
+    public ResponseEntity<String> registerUser(@RequestBody Map<String, String> payload) {
+        try {
+            String username = payload.get("username");
+            String pin = payload.get("pin");
+
+            if (username == null || pin == null || pin.length() != 4) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid username or PIN length.");
+            }
+
+            String hashed = BCrypt.hashpw(pin, BCrypt.gensalt());
+            User newUser = new User(0, username, hashed, LocalDateTime.now(), 0, "parent", null);
+
+            userDAO.save(newUser);
+            return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully.");
+
+        } catch (SQLException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Registration failed: " + e.getMessage());
+        }
     }
 }

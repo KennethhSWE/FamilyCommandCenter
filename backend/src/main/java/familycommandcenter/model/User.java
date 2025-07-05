@@ -1,5 +1,6 @@
 package familycommandcenter.model;
 
+import java.util.UUID;
 import java.time.LocalDateTime;
 
 public class User {
@@ -9,15 +10,17 @@ public class User {
     private LocalDateTime createdAt;
     private int age;
     private String role; 
+    private UUID householdId;
 
     // Constructor
-    public User(int id, String username, String passwordHash, LocalDateTime createdAt, int age, String role) {
+    public User(int id, String username, String passwordHash, LocalDateTime createdAt, int age, String role, UUID householdId) {
         this.id = id;
         this.username = username;
         this.passwordHash = passwordHash;
         this.createdAt = createdAt;
         this.age = age;
         this.role = role;
+        this.householdId = householdId;
     }
 
     // Getters & Setters
@@ -67,5 +70,13 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public UUID gethouseholdId() {
+        return householdId;
+    }
+
+    public void setHouseholdId(UUID householdId) {
+        this.householdId = householdId;
     }
 }
