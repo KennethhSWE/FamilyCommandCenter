@@ -56,7 +56,7 @@ export default function RegisterScreen() {
       await saveHouseholdId(householdId); // AsyncStorage
 
       // 👇 jump to the first onboarding step
-      router.replace("./onboarding/add-kids");
+      router.replace("/onboarding/AddKidsScreen"); 
     } catch (err) {
       console.error("Registration error:", err);
       Alert.alert("Error", "Failed to register. Please try again.");

@@ -1,9 +1,9 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import AdminScreen from "../(tabs)/admin/admin";
-import CalendarScreen from "../(tabs)/calendar/calendar";
-import PointsScreen from "../(tabs)/points/points";
-import RewardsScreen from "../(tabs)/rewards/rewards";
+import AdminScreen from "../(tabs)/admin";
+import CalendarScreen from "../(tabs)/calendar";
+import PointsScreen from "../(tabs)/points";
+import RewardsScreen from "../(tabs)/rewards";
 
 const Tab = createBottomTabNavigator();
 

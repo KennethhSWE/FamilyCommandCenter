@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { getHouseholdId, getToken } from "src/lib/auth";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Kid {
   name: string;
@@ -20,6 +21,8 @@ export default function AddKidsScreen() {
   const [age, setAge] = useState("");
   const [kids, setKids] = useState<Kid[]>([]);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+
 
   const handleAddKid = () => {
     if (!name || !age) return;
@@ -57,25 +60,26 @@ export default function AddKidsScreen() {
         )}
       />
 
-      {kids.length > 0 && (
-        <Button
-          title="Next"
-          onPress={async () => {
-            const token = await getToken();
-            const householdId = await getHouseholdId();
-            router.push("./onboarding/AddRewardsScreen");
-             await fetch("http://192.168.1.122:7070/api/kids", {
-        method : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization : `Bearer ${token}`,
-        },
-        body: JSON.stringify({ householdId, kids }),
-      });
+     {kids.length > 0 && (
+  <View style={{ paddingBottom: insets.bottom + 20, marginTop: 10 }}>
+    <Button
+      title="Next"
+      onPress={async () => {
+        const token = await getToken();
+        const householdId = await getHouseholdId();
+        await fetch("http://192.168.1.122:7070/api/kids", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ householdId, kids }),
+        });
 
-      router.replace("./onboarding/AddRewardsScreen");
-    }}
-  />
+        router.replace("/onboarding/AddRewardsScreen");
+      }}
+    />
+  </View>
 )}
     </View>
   );
@@ -85,11 +89,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, justifyContent: "center" },
   title: { fontSize: 24, marginBottom: 20, textAlign: "center" },
   input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
+    borderWidth: 3,
+    borderColor: "#1a2a96",
     padding: 10,
-    marginVertical: 5,
+    marginVertical: 6,
     borderRadius: 5,
   },
-  kidItem: { padding: 10, fontSize: 18 },
+  kidItem: { padding: 10, fontSize: 20 },
 });

@@ -5,7 +5,7 @@ export default function OnboardingLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen
-        name="add-kids"
+        name="AddKidsScreen"
         options={{ title: 'Add Your Kids' }}
       />
       {/* later you might add

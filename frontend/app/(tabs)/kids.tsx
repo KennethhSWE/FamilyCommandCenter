@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Dimensions, StyleSheet, View } from "react-native";
 import Carousel from "react-native-reanimated-carousel";
 import { Kid, getKids } from "src/lib/api";
-import KidCard from "../../components/KidCard";
+import KidCard from "../components/KidCard";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width * 0.68;
