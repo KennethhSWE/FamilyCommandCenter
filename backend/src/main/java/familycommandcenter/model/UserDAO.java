@@ -117,4 +117,19 @@ public class UserDAO {
                 rs.getObject("household_id", java.util.UUID.class)
         );
     }
+
+    public List<User> getKidsByHousehold(java.util.UUID householdId) throws SQLException {
+        final String sql = "SELECT * FROM users " +
+                           "WHERE household_id = ? AND role = 'kid'";
+
+        List<User> list = new ArrayList<>();
+        try (Connection c = dataSource.getConnection();
+        PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setObject(1, householdId, java.sql.Types.OTHER);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) list.add(map(rs));
+        }
+        return list;
+    }
 }

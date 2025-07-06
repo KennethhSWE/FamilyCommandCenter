@@ -159,13 +159,36 @@ public class App {
         /* =================================================================
          *  CHORES (all original handlers kept)
          * ================================================================= */
+        app.post("/api/household/kids", ctx -> {
+            record KidPayload(String name, int age) {}
+            record KidsRequest(java.util.UUID householdId, java.util.List<KidPayload> kids) {}
 
+            KidsRequest req = new ObjectMapper().readValue(ctx.body(), KidsRequest.class);
+
+            for (KidPayload k : req.kids()) {
+                User kid = new User(
+                    0,
+                    k.name(),
+                    PasswordUtils.hashPassword("0000"),
+                    LocalDateTime.now(), 
+                    k.age(),
+                    "kid",
+                    req.householdId());
+                userDao.save(kid);
+            }
+            ctx.status(201).result("Kids saved");
+        });
         app.get("/api/chores",             ctx -> ctx.json(ChoreDataService.getAllChores()));
         app.get("/api/chores/by-user",     ctx -> ctx.json(ChoreDataService.getChoresGroupedByUser()));
         app.get("/api/chores/today",       ctx -> ctx.json(ChoreDataService.getChoresDueToday()));
         app.get("/api/chores/overdue",     ctx -> ctx.json(ChoreDataService.getOverdueChores()));
         app.post("/api/chores",            ctx -> { Chore c = ctx.bodyAsClass(Chore.class); ChoreDataService.addChore(c); ctx.status(201);} );
         app.delete("/api/chores/{id}",     ctx -> { ChoreDataService.deleteChore(Integer.parseInt(ctx.pathParam("id"))); ctx.status(204);} );
+
+        app.get("/api/kids/{hh}", ctx -> {
+            java.util.UUID hhId = java.util.UUID.fromString(ctx.pathParam("hh"));
+            ctx.json( userDao.getKidsByHousehold(hhId) );
+        });
 
         /* =================================================================
          *  HOUSEKEEPING
