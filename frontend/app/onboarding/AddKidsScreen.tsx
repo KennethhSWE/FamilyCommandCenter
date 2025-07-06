@@ -66,17 +66,28 @@ export default function AddKidsScreen() {
       title="Next"
       onPress={async () => {
         const token = await getToken();
+        console.log("Token: ", token);
         const householdId = await getHouseholdId();
-        await fetch("http://192.168.1.122:7070/api/kids", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ householdId, kids }),
-        });
 
-        router.replace("/onboarding/AddRewardsScreen");
+        try {
+          const res = await fetch("http://192.168.1.122:7070/api/household/kids", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify({ householdId, kids }),
+          });
+
+          if (!res.ok) {
+            console.error("Failed to save kids:", await res.text());
+            return;
+          }
+
+          router.replace("/onboarding/AddRewardsScreen");
+        } catch (err) {
+          console.error("Network or server error:", err);
+        }
       }}
     />
   </View>
