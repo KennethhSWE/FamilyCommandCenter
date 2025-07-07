@@ -3,55 +3,73 @@ package familycommandcenter.controllers;
 import familycommandcenter.model.*;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Assigns chores from the “pool” to kids once a day.
- */
 public class AssignController {
 
-    private final UserDAO         userDAO;
-    private final ChoreDataService choreDataService;
+    private final UserDAO userDAO;
+    private final Random  rng = new Random();
 
-    public AssignController(UserDAO userDAO, ChoreDataService choreDataService) {
-        this.userDAO          = userDAO;
-        this.choreDataService = choreDataService;
+    public AssignController(UserDAO userDAO) {
+        this.userDAO = userDAO;
     }
 
-    /** Pick a random eligible chore for every kid and assign it for today. */
-    public void assignDailyChores() {
-        try {
-            /* ── 1️⃣  fetch the actors ─────────────────────────────── */
-            // We only care about the kids, not parents/admins:
-            List<User> kids      = userDAO.getUsersByRole("kid");
-            List<Chore> chorePool = ChoreDataService.getAllPoolChores();
+    /** Assign up to 5 chores per kid; returns count per kid. */
+    public Map<String, Integer> assignDailyChores() {
+        Map<String, Integer> perKid = new HashMap<>();
 
-            /* ── 2️⃣  loop through each kid & assign ────────────────── */
+        try {
+            List<User>  kids = userDAO.getUsersByRole("kid");          // all kids
+            List<Chore> pool = ChoreDataService.getAllPoolChores();    // template chores
+
             for (User kid : kids) {
 
-                List<Chore> eligible = chorePool.stream()
-                    .filter(c -> (c.getMinAge() == null || kid.getAge() >= c.getMinAge()) &&
-                                 (c.getMaxAge() == null || kid.getAge() <= c.getMaxAge()))
-                    .collect(Collectors.toList());
-
-                if (!eligible.isEmpty()) {
-                    Chore selected = eligible.get(new Random().nextInt(eligible.size()));
-
-                    /* customise the picked chore instance */
-                    selected.setAssignedTo(kid.getUsername());
-                    selected.setComplete(false);
-                    selected.setRequestedComplete(false);
-                    selected.setDueDate(LocalDate.now().toString());       // due today
-
-                    choreDataService.insertAssignedChore(selected);
+                // unfinished carry-over
+                List<Chore> carry = ChoreDataService.getIncompleteByKid(kid.getUsername());
+                int need = 5 - carry.size();
+                if (need <= 0) {
+                    perKid.put(kid.getUsername(), 5);
+                    continue;
                 }
+
+                // age-appropriate & not yet assigned
+                Set<String> namesAlready = carry.stream()
+                                                .map(Chore::getName)
+                                                .collect(Collectors.toSet());
+
+                List<Chore> eligible = pool.stream()
+                        .filter(c ->
+                                (c.getMinAge() == null || kid.getAge() >= c.getMinAge()) &&
+                                (c.getMaxAge() == null || kid.getAge() <= c.getMaxAge()) &&
+                                !namesAlready.contains(c.getName()))
+                        .toList();
+
+                Collections.shuffle(eligible, rng);
+                List<Chore> picked = eligible.stream().limit(need).toList();
+
+                // persist concrete instances
+                for (Chore tpl : picked) {
+                    Chore inst = new Chore(
+                            0,
+                            tpl.getName(),
+                            kid.getUsername(),
+                            tpl.getPoints(),
+                            LocalDate.now().toString(),
+                            false,
+                            false,
+                            tpl.getMinAge(),
+                            tpl.getMaxAge(),
+                            tpl.isRecurring()
+                    );
+                    ChoreDataService.insertAssignedChore(inst);
+                }
+                perKid.put(kid.getUsername(), carry.size() + picked.size());
             }
         } catch (SQLException e) {
-            System.err.println("Failed to assign daily chores: " + e.getMessage());
+            System.err.println("assignDailyChores failed: " + e.getMessage());
             e.printStackTrace();
         }
+        return perKid;
     }
 }
-

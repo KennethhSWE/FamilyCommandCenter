@@ -11,7 +11,8 @@ public class Chore {
     private int points;  
     private boolean requestedComplete;
     private int minAge; 
-    private int maxAge; 
+    private int maxAge;
+
 
     // Getter and Setter methods 
     public int getId() {
@@ -94,5 +95,16 @@ public class Chore {
         this.isRecurring = isRecurring; 
     }
 
-    
+    public Chore(int id, String name, String assignedTo, int points, String dueDate, boolean isComplete, boolean requestedComplete, Integer minAge, Integer maxAge, boolean isRecurring) {
+        this.id = id;
+        this.name = name;
+        this.assignedTo = assignedTo;
+        this.points = points;
+        this.dueDate = dueDate;
+        this.isComplete = isComplete;
+        this.requestedComplete = requestedComplete;
+        this.minAge = minAge;
+        this.maxAge = maxAge;
+        this.isRecurring = isRecurring;
+    }
 }

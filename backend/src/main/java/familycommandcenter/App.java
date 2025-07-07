@@ -194,8 +194,7 @@ public class App {
          *  HOUSEKEEPING
          * ================================================================= */
 
-        ChoreDataService choreDS   = new ChoreDataService();
-        AssignController assignCtl = new AssignController(userDao, choreDS);
+        AssignController assignCtl = new AssignController(userDao);
         app.post("/api/assign/daily", ctx -> assignCtl.assignDailyChores());
 
         // simple health

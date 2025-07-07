@@ -18,14 +18,17 @@ public class ChoreDataService {
                 ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                Chore chore = new Chore();
-                chore.setId(rs.getInt("id"));
-                chore.setName(rs.getString("name"));
-                chore.setAssignedTo(rs.getString("assigned_to"));
-                chore.setComplete(rs.getBoolean("is_complete"));
-                chore.setDueDate(rs.getString("due_date") != null ? rs.getString("due_date") : null);
-                chore.setPoints(rs.getInt("points"));
-                chore.setRequestedComplete(rs.getBoolean("requested_complete"));
+                Chore chore = new Chore(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("assigned_to"),
+                        rs.getInt("points"),
+                        rs.getString("due_date"),
+                        rs.getBoolean("is_complete"),
+                        rs.getBoolean("requested_complete"),
+                        rs.getObject("min_age") != null ? rs.getInt("min_age") : null,
+                        rs.getObject("max_age") != null ? rs.getInt("max_age") : null,
+                        rs.getBoolean("is_recurring"));
                 chores.add(chore);
             }
         }
@@ -34,7 +37,7 @@ public class ChoreDataService {
     }
 
     public static void addChore(Chore chore) throws SQLException {
-        String sql = "INSERT INTO chores (name, assigned_to, is_complete, due_date, points) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO chores (name, assigned_to, is_complete, due_date, points, requested_complete, min_age, max_age, is_recurring) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = Database.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, chore.getName());
@@ -42,13 +45,16 @@ public class ChoreDataService {
             stmt.setBoolean(3, chore.isComplete());
             stmt.setDate(4, Date.valueOf(chore.getDueDate()));
             stmt.setInt(5, chore.getPoints());
+            stmt.setBoolean(6, chore.isRequestedComplete());
+            stmt.setObject(7, chore.getMinAge(), Types.INTEGER);
+            stmt.setObject(8, chore.getMaxAge(), Types.INTEGER);
+            stmt.setBoolean(9, chore.isRecurring());
             stmt.executeUpdate();
         }
     }
 
     public static void markChoreComplete(int id) throws SQLException {
         String sql = "UPDATE chores SET is_complete = TRUE WHERE id = ?";
-
         try (Connection conn = Database.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
@@ -58,7 +64,6 @@ public class ChoreDataService {
 
     public static void deleteChore(int id) throws SQLException {
         String sql = "DELETE FROM chores WHERE id = ?";
-
         try (Connection conn = Database.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
@@ -67,7 +72,7 @@ public class ChoreDataService {
     }
 
     public static void updateChore(Chore chore) throws SQLException {
-        String sql = "UPDATE chores SET name = ?, assigned_to = ?, is_complete = ?, due_date = ?, points = ? WHERE id = ?";
+        String sql = "UPDATE chores SET name = ?, assigned_to = ?, is_complete = ?, due_date = ?, points = ?, requested_complete = ?, min_age = ?, max_age = ?, is_recurring = ? WHERE id = ?";
         try (Connection conn = Database.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, chore.getName());
@@ -75,7 +80,11 @@ public class ChoreDataService {
             stmt.setBoolean(3, chore.isComplete());
             stmt.setDate(4, Date.valueOf(chore.getDueDate()));
             stmt.setInt(5, chore.getPoints());
-            stmt.setInt(6, chore.getId());
+            stmt.setBoolean(6, chore.isRequestedComplete());
+            stmt.setObject(7, chore.getMinAge(), Types.INTEGER);
+            stmt.setObject(8, chore.getMaxAge(), Types.INTEGER);
+            stmt.setBoolean(9, chore.isRecurring());
+            stmt.setInt(10, chore.getId());
             stmt.executeUpdate();
         }
     }
@@ -139,13 +148,17 @@ public class ChoreDataService {
                 ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                Chore chore = new Chore();
-                chore.setId(rs.getInt("id"));
-                chore.setName(rs.getString("name"));
-                chore.setAssignedTo(rs.getString("assigned_to"));
-                chore.setComplete(rs.getBoolean("is_complete"));
-                chore.setDueDate(rs.getString("due_date"));
-                chore.setPoints(rs.getInt("points"));
+                Chore chore = new Chore(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("assigned_to"),
+                        rs.getInt("points"),
+                        rs.getString("due_date"),
+                        rs.getBoolean("is_complete"),
+                        rs.getBoolean("requested_complete"),
+                        rs.getObject("min_age") != null ? rs.getInt("min_age") : null,
+                        rs.getObject("max_age") != null ? rs.getInt("max_age") : null,
+                        rs.getBoolean("is_recurring"));
                 chores.add(chore);
             }
         }
@@ -161,13 +174,17 @@ public class ChoreDataService {
                 ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                Chore chore = new Chore();
-                chore.setId(rs.getInt("id"));
-                chore.setName(rs.getString("name"));
-                chore.setAssignedTo(rs.getString("assigned_to"));
-                chore.setComplete(rs.getBoolean("is_complete"));
-                chore.setDueDate(rs.getString("due_date"));
-                chore.setPoints(rs.getInt("points"));
+                Chore chore = new Chore(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("assigned_to"),
+                        rs.getInt("points"),
+                        rs.getString("due_date"),
+                        rs.getBoolean("is_complete"),
+                        rs.getBoolean("requested_complete"),
+                        rs.getObject("min_age") != null ? rs.getInt("min_age") : null,
+                        rs.getObject("max_age") != null ? rs.getInt("max_age") : null,
+                        rs.getBoolean("is_recurring"));
                 chores.add(chore);
             }
         }
@@ -211,14 +228,17 @@ public class ChoreDataService {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                Chore chore = new Chore();
-                chore.setId(rs.getInt("id"));
-                chore.setName(rs.getString("name"));
-                chore.setAssignedTo(rs.getString("assigned_to"));
-                chore.setComplete(rs.getBoolean("is_complete"));
-                chore.setDueDate(rs.getString("due_date"));
-                chore.setPoints(rs.getInt("points"));
-                return chore;
+                return new Chore(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("assigned_to"),
+                        rs.getInt("points"),
+                        rs.getString("due_date"),
+                        rs.getBoolean("is_complete"),
+                        rs.getBoolean("requested_complete"),
+                        rs.getObject("min_age") != null ? rs.getInt("min_age") : null,
+                        rs.getObject("max_age") != null ? rs.getInt("max_age") : null,
+                        rs.getBoolean("is_recurring"));
             } else {
                 return null;
             }
@@ -258,19 +278,53 @@ public class ChoreDataService {
                 ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                Chore chore = new Chore();
-                chore.setId(rs.getInt("id"));
-                chore.setName(rs.getString("name"));
-                chore.setComplete(rs.getBoolean("is_complete"));
-                chore.setDueDate(rs.getString("due_date"));
-                chore.setPoints(rs.getInt("points"));
-                chore.setRequestedComplete(rs.getBoolean("requested_complete"));
-                chore.setMinAge(rs.getObject("min_age") != null ? rs.getInt("min_age") : null);
-                chore.setMaxAge(rs.getObject("max_age") != null ? rs.getInt("max_age") : null);
+                Chore chore = new Chore(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("assigned_to"),
+                        rs.getInt("points"),
+                        rs.getString("due_date"),
+                        rs.getBoolean("is_complete"),
+                        rs.getBoolean("requested_complete"),
+                        rs.getObject("min_age") != null ? rs.getInt("min_age") : null,
+                        rs.getObject("max_age") != null ? rs.getInt("max_age") : null,
+                        rs.getBoolean("is_recurring"));
                 chores.add(chore);
             }
         }
         return chores;
+    }
+
+    public static List<Chore> getIncompleteByKid(String username) throws SQLException {
+        List<Chore> list = new ArrayList<>();
+        String sql = """
+                    SELECT * FROM chores
+                    WHERE assigned_to = ?
+                      AND is_complete = FALSE
+                """;
+
+        try (Connection conn = Database.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                Chore c = new Chore(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("assigned_to"),
+                        rs.getInt("points"),
+                        rs.getString("due_date"),
+                        rs.getBoolean("is_complete"),
+                        rs.getBoolean("requested_complete"),
+                        rs.getObject("min_age") != null ? rs.getInt("min_age") : null,
+                        rs.getObject("max_age") != null ? rs.getInt("max_age") : null,
+                        rs.getBoolean("is_recurring"));
+                list.add(c);
+            }
+        }
+        return list;
     }
 
     public static void insertAssignedChore(Chore chore) throws SQLException {
@@ -303,16 +357,20 @@ public class ChoreDataService {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                Chore chore = new Chore();
-                chore.setId(rs.getInt("id"));
-                chore.setName(rs.getString("name"));
-                chore.setAssignedTo(rs.getString("assigned_to"));
-                chore.setComplete(rs.getBoolean("is_complete"));
-                chore.setDueDate(rs.getString("due_date"));
-                chore.setPoints(rs.getInt("points"));
+                Chore chore = new Chore(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("assigned_to"),
+                        rs.getInt("points"),
+                        rs.getString("due_date"),
+                        rs.getBoolean("is_complete"),
+                        rs.getBoolean("requested_complete"),
+                        rs.getObject("min_age") != null ? rs.getInt("min_age") : null,
+                        rs.getObject("max_age") != null ? rs.getInt("max_age") : null,
+                        rs.getBoolean("is_recurring"));
                 list.add(chore);
             }
         }
-        return list; 
+        return list;
     }
 }
