@@ -2,10 +2,12 @@ package familycommandcenter.model;
 
 import familycommandcenter.Database;
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ChoreDataService {
 
@@ -295,6 +297,28 @@ public class ChoreDataService {
         return chores;
     }
 
+    // This will return chores from the pool that fit the age range for the child.
+    public static List<Chore> getPoolForKidAge(int age) throws SQLException {
+        String sql = """
+                    SELECT *
+                    FROM chores
+                    WHERE (assigned_to IS NULL OR assigned_to = '')
+                      AND (min_age IS NULL OR min_age <= ?)
+                      AND (max_age IS NULL OR max_age >= ?)
+                """;
+        try (Connection c = Database.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setInt(1, age);
+            ps.setInt(2, age);
+            ResultSet rs = ps.executeQuery();
+            List<Chore> list = new ArrayList<>();
+            while (rs.next())
+                list.add(map(rs));
+            return list;
+        }
+    }
+
     public static List<Chore> getIncompleteByKid(String username) throws SQLException {
         List<Chore> list = new ArrayList<>();
         String sql = """
@@ -372,5 +396,31 @@ public class ChoreDataService {
             }
         }
         return list;
+    }
+
+    private static Chore map(ResultSet rs) throws SQLException {
+        return new Chore(
+                rs.getInt("id"),
+                rs.getString("name"),
+                rs.getString("assigned_to"),
+                rs.getInt("points"),
+                rs.getString("due_date"),
+                rs.getBoolean("is_complete"),
+                rs.getBoolean("requested_complete"),
+                rs.getObject("min_age") != null ? rs.getInt("min_age") : null,
+                rs.getObject("max_age") != null ? rs.getInt("max_age") : null,
+                rs.getBoolean("is_recurring"));
+    }
+
+    public static List<Chore> getChoresAssignedToKid(int kidId) throws SQLException {
+        List<Chore> all = getAllChores();
+        List<Chore> filtered = new ArrayList<>();
+
+        for (Chore c : all) {
+            if (c.getAssignedTo() != null && c.getAssignedTo().equalsIgnoreCase(String.valueOf(kidId))) {
+                filtered.add(c);
+            }
+        }
+        return filtered;
     }
 }

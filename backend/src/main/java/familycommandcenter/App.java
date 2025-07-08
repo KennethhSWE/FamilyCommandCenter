@@ -20,27 +20,30 @@ public class App {
     public static void main(String[] args) throws SQLException {
 
         /* ────────────────────────── DAL HELPERS ────────────────────────── */
-        DataSource      ds             = Database.getDataSource();     // pooled
-        Connection      conn           = ds.getConnection();           // still used by a few older DAOs
-        UserDAO         userDao        = new UserDAO(ds);
-        PointsBankDAO   pointsBankDAO  = new PointsBankDAO(conn);
-        RewardDAO       rewardDAO      = new RewardDAO(conn);
-        RedemptionDAO   redemptionDAO  = new RedemptionDAO(conn);
+        DataSource ds = Database.getDataSource(); // pooled
+        Connection conn = ds.getConnection(); // still used by a few older DAOs
+        UserDAO userDao = new UserDAO(ds);
+        PointsBankDAO pointsBankDAO = new PointsBankDAO(conn);
+        RewardDAO rewardDAO = new RewardDAO(conn);
+        RedemptionDAO redemptionDAO = new RedemptionDAO(conn);
 
         /* ────────────────────────── JETTY/JAVALIN ──────────────────────── */
         Javalin app = Javalin.create(cfg -> cfg.plugins
-                                      .enableCors(cors -> cors.add(it -> it.anyHost())))
-                             .start(7070);
+                .enableCors(cors -> cors.add(it -> it.anyHost())))
+                .start(7070);
 
         System.out.println("Javalin server started on port 7070");
 
-        /* =================================================================
-         *  AUTH + ON-BOARDING
-         * ================================================================= */
+        /*
+         * =================================================================
+         * AUTH + ON-BOARDING
+         * =================================================================
+         */
 
-        // (Legacy) generic register   ── mostly unused after household flow
+        // (Legacy) generic register ── mostly unused after household flow
         app.post("/api/register", ctx -> {
-            Map<String,String> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {});
+            Map<String, String> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {
+            });
             String username = body.get("username");
             String password = body.get("password");
 
@@ -54,13 +57,13 @@ public class App {
             }
 
             User u = new User(
-                    0,                                          // user id 
-                    username,                                   // username
-                    PasswordUtils.hashPassword(password),       //hashed password
-                    LocalDateTime.now(),                        //localtime stamp createdAt
-                    0,                                          //age
-                    "parent",                                   //role (parent or kid)
-                    java.util.UUID.randomUUID()                 //householdId
+                    0, // user id
+                    username, // username
+                    PasswordUtils.hashPassword(password), // hashed password
+                    LocalDateTime.now(), // localtime stamp createdAt
+                    0, // age
+                    "parent", // role (parent or kid)
+                    java.util.UUID.randomUUID() // householdId
             );
             userDao.save(u);
             ctx.status(201);
@@ -68,9 +71,10 @@ public class App {
 
         // First-time “Create household”
         app.post("/api/household", ctx -> {
-            Map<String,String> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {});
+            Map<String, String> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {
+            });
             String adminName = body.get("adminName");
-            String pin       = body.get("pin");
+            String pin = body.get("pin");
 
             if (adminName == null || adminName.isBlank() || pin == null || pin.length() != 4) {
                 ctx.status(400).result("Parent name & 4-digit PIN required");
@@ -96,12 +100,13 @@ public class App {
 
             String token = JwtUtil.generateToken(adminName, "parent");
             ctx.json(Map.of("token", token,
-                            "householdId", householdId.toString()));
+                    "householdId", householdId.toString()));
         });
 
         // Login (parent or kid)
         app.post("/api/login", ctx -> {
-            Map<String,String> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {});
+            Map<String, String> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {
+            });
             String username = body.get("username");
             String password = body.get("password");
 
@@ -118,23 +123,30 @@ public class App {
             ctx.json(Map.of("token", jwt));
         });
 
-        /* =================================================================
-         *  REWARDS & POINTS
-         * ================================================================= */
+        /*
+         * =================================================================
+         * REWARDS & POINTS
+         * =================================================================
+         */
 
         app.post("/api/rewards/redeem", ctx -> {
-            Map<String,String> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {});
+            Map<String, String> body = new ObjectMapper().readValue(ctx.body(), new TypeReference<>() {
+            });
             String username = body.get("username");
-            int    rewardId = Integer.parseInt(body.get("rewardId"));
+            int rewardId = Integer.parseInt(body.get("rewardId"));
 
             Optional<Reward> rewardOpt = rewardDAO.getRewardById(rewardId);
-            if (rewardOpt.isEmpty()) { ctx.status(404).result("Reward not found"); return; }
+            if (rewardOpt.isEmpty()) {
+                ctx.status(404).result("Reward not found");
+                return;
+            }
 
-            Reward reward  = rewardOpt.get();
-            int    points  = pointsBankDAO.getPoints(username);
+            Reward reward = rewardOpt.get();
+            int points = pointsBankDAO.getPoints(username);
 
             if (points < reward.getCost()) {
-                ctx.status(400).result("Not enough points"); return;
+                ctx.status(400).result("Not enough points");
+                return;
             }
 
             if (reward.isRequiresApproval()) {
@@ -150,49 +162,69 @@ public class App {
         });
 
         app.put("/api/rewards/approve", ctx -> {
-            int redemptionId = new ObjectMapper().readValue(ctx.body(), new TypeReference<Map<String,Integer>>(){}).get("redemptionId");
+            int redemptionId = new ObjectMapper().readValue(ctx.body(), new TypeReference<Map<String, Integer>>() {
+            }).get("redemptionId");
             if (redemptionDAO.approveRedemption(redemptionId))
                 ctx.status(200);
-            else  ctx.status(400).result("Approval failed");
+            else
+                ctx.status(400).result("Approval failed");
         });
 
-        /* =================================================================
-         *  CHORES (all original handlers kept)
-         * ================================================================= */
+        /*
+         * =================================================================
+         * CHORES (all original handlers kept)
+         * =================================================================
+         */
         app.post("/api/household/kids", ctx -> {
-            record KidPayload(String name, int age) {}
-            record KidsRequest(java.util.UUID householdId, java.util.List<KidPayload> kids) {}
+            record KidPayload(String name, int age) {
+            }
+            record KidsRequest(java.util.UUID householdId, java.util.List<KidPayload> kids) {
+            }
 
             KidsRequest req = new ObjectMapper().readValue(ctx.body(), KidsRequest.class);
 
             for (KidPayload k : req.kids()) {
                 User kid = new User(
-                    0,
-                    k.name(),
-                    PasswordUtils.hashPassword("0000"),
-                    LocalDateTime.now(), 
-                    k.age(),
-                    "kid",
-                    req.householdId());
+                        0,
+                        k.name(),
+                        PasswordUtils.hashPassword("0000"),
+                        LocalDateTime.now(),
+                        k.age(),
+                        "kid",
+                        req.householdId());
                 userDao.save(kid);
             }
             ctx.status(201).result("Kids saved");
         });
-        app.get("/api/chores",             ctx -> ctx.json(ChoreDataService.getAllChores()));
-        app.get("/api/chores/by-user",     ctx -> ctx.json(ChoreDataService.getChoresGroupedByUser()));
-        app.get("/api/chores/today",       ctx -> ctx.json(ChoreDataService.getChoresDueToday()));
-        app.get("/api/chores/overdue",     ctx -> ctx.json(ChoreDataService.getOverdueChores()));
-        app.post("/api/chores",            ctx -> { Chore c = ctx.bodyAsClass(Chore.class); ChoreDataService.addChore(c); ctx.status(201);} );
-        app.delete("/api/chores/{id}",     ctx -> { ChoreDataService.deleteChore(Integer.parseInt(ctx.pathParam("id"))); ctx.status(204);} );
+        app.get("/api/chores", ctx -> ctx.json(ChoreDataService.getAllChores()));
+        app.get("/api/chores/by-user", ctx -> ctx.json(ChoreDataService.getChoresGroupedByUser()));
+        app.get("/api/chores/today", ctx -> ctx.json(ChoreDataService.getChoresDueToday()));
+        app.get("/api/chores/overdue", ctx -> ctx.json(ChoreDataService.getOverdueChores()));
+        app.post("/api/chores", ctx -> {
+            Chore c = ctx.bodyAsClass(Chore.class);
+            ChoreDataService.addChore(c);
+            ctx.status(201);
+        });
+        app.delete("/api/chores/{id}", ctx -> {
+            ChoreDataService.deleteChore(Integer.parseInt(ctx.pathParam("id")));
+            ctx.status(204);
+        });
 
         app.get("/api/kids/{hh}", ctx -> {
             java.util.UUID hhId = java.util.UUID.fromString(ctx.pathParam("hh"));
-            ctx.json( userDao.getKidsByHousehold(hhId) );
+            ctx.json(userDao.getKidsByHousehold(hhId));
         });
 
-        /* =================================================================
-         *  HOUSEKEEPING
-         * ================================================================= */
+        app.get("/api/chores/kid/{kidId}", ctx -> {
+            int kidId = Integer.parseInt(ctx.pathParam("kidId"));
+            ctx.json(ChoreDataService.getChoresAssignedToKid(kidId));
+        });
+
+        /*
+         * =================================================================
+         * HOUSEKEEPING
+         * =================================================================
+         */
 
         AssignController assignCtl = new AssignController(userDao);
         app.post("/api/assign/daily", ctx -> assignCtl.assignDailyChores());
@@ -200,26 +232,36 @@ public class App {
         // simple health
         app.get("/", ctx -> ctx.result("Family Command Center LIVE"));
 
-        /* =================================================================
-         *  TOKEN VALIDATE + AUTH MIDDLEWARE
-         * ================================================================= */
+        /*
+         * =================================================================
+         * TOKEN VALIDATE + AUTH MIDDLEWARE
+         * =================================================================
+         */
 
         app.get("/api/auth/validate", ctx -> {
             String hdr = ctx.header("Authorization");
-            if (hdr == null || !hdr.startsWith("Bearer ")) { ctx.status(401); return; }
-            try { JwtUtil.verify(hdr.substring(7)); ctx.status(200); }
-            catch (Exception e) { ctx.status(401).result("Invalid token"); }
+            if (hdr == null || !hdr.startsWith("Bearer ")) {
+                ctx.status(401);
+                return;
+            }
+            try {
+                JwtUtil.verify(hdr.substring(7));
+                ctx.status(200);
+            } catch (Exception e) {
+                ctx.status(401).result("Invalid token");
+            }
         });
 
-        app.before("/api/chores/*"   , new AuthMiddleware());
+        app.before("/api/chores/*", new AuthMiddleware());
         app.before("/api/points-bank", new AuthMiddleware());
 
-        /* =================================================================
-         *  USERS
-         * ================================================================= */
+        /*
+         * =================================================================
+         * USERS
+         * =================================================================
+         */
 
-        app.get("/api/users"      , ctx -> ctx.json(userDao.findAll()));
-        app.get("/api/users/kids" , ctx -> ctx.json(userDao.getUsersByRole("kid")));
+        app.get("/api/users", ctx -> ctx.json(userDao.findAll()));
+        app.get("/api/users/kids", ctx -> ctx.json(userDao.getUsersByRole("kid")));
     }
 }
-
