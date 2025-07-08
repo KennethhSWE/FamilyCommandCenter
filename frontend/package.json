@@ -29,6 +29,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-system-ui": "5.0.10",
     "expo-web-browser": "~14.2.0",
+    "jest-expo": "53.0.9",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
@@ -42,7 +43,7 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.20.0",
     "react-navigation": "^5.0.0",
-    "jest-expo": "53.0.9"
+    "expo-linear-gradient": "~14.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
