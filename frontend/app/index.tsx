@@ -1,21 +1,30 @@
 // frontend/app/index.tsx
-import { Redirect } from "expo-router";
+//--------------------------------------------------------------
+//  Entry point – decide where to go, show splash meanwhile
+//--------------------------------------------------------------
+import { Redirect }         from "expo-router";
 import { useEffect, useState } from "react";
-import { getToken, getHouseholdId } from "../src/lib/auth";
-import SplashAnimation from "./components/SplashAnimation";
 
+import { getToken, getHouseholdId } from "../src/lib/auth";
+import SplashAnimation      from "./components/SplashAnimation";
+import 'react-native-get-random-values';
+
+/* ───────────────────────── types ───────────────────────── */
 type Dest = "/(tabs)/kids" | "/register";
 
+/* ───────────────────────── component ───────────────────────── */
 export default function Index() {
-  const [dest, setDest] = useState<Dest | null>(null);
-  const [splashDone, setSplashDone] = useState(false);
+  const [dest,   setDest]   = useState<Dest | null>(null); // where to redirect
+  const [ready,  setReady]  = useState(false);             // splash finished
 
+  /* 1 ▸ auth / onboarding check (runs once) */
   useEffect(() => {
     (async () => {
       try {
-        const token = await getToken();
-        const householdId = await getHouseholdId();
-
+        const [token, householdId] = await Promise.all([
+          getToken(),
+          getHouseholdId(),
+        ]);
         setDest(token && householdId ? "/(tabs)/kids" : "/register");
       } catch (err) {
         console.error("Startup check failed:", err);
@@ -24,10 +33,11 @@ export default function Index() {
     })();
   }, []);
 
-  if (!splashDone || dest === null) {
-    return <SplashAnimation onFinish={() => setSplashDone(true)} />;
+  /* 2 ▸ still loading ⟶ keep splash */
+  if (!ready || dest === null) {
+    return <SplashAnimation onFinish={() => setReady(true)} />;
   }
 
-  return <Redirect href={{ pathname: dest ?? "/register" }} />;
-
+  /* 3 ▸ auth check done + splash done ⟶ redirect */
+  return <Redirect href={dest} />;
 }

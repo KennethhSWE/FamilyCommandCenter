@@ -1,135 +1,149 @@
-// frontend/app/onboarding/AddChoresScreen.tsx
 import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   Button,
-  FlatList,
+  ScrollView,
   StyleSheet,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  useColorScheme,
   Alert,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { router } from "expo-router";
-import { getToken, getHouseholdId } from "src/lib/auth";
-import "react-native-get-random-values";
-import { v4 as uuid } from "uuid";
+import axios from "axios";
 
 interface Chore {
-  id: string;
   name: string;
-  points: number;
+  assignedTo: string;
+  points: number | string; 
+  dueDate: string | null;
+  isComplete: boolean;
+  requestedComplete: boolean;
+  isVerified: boolean;
+  isRecurring: boolean;
+  minAge: number | null;
+  maxAge: number | null;
+  createdBy: number | null;
 }
 
-const starterChores: Chore[] = [
-  { id: "1", name: "Make your bed",      points: 10 },
-  { id: "2", name: "Feed the pet",       points: 15 },
-  { id: "3", name: "Take out trash",     points: 20 },
-  { id: "4", name: "Clean your room",    points: 25 },
-];
-
 export default function AddChoresScreen() {
-  const scheme = useColorScheme();
-  const c = scheme === "dark"
-    ? { bg: "#000", text: "#FFF", border: "#666" }
-    : { bg: "#FFF", text: "#000", border: "#CCC" };
+  const [chores, setChores] = useState<Chore[]>([
+    {
+      name: "",
+      assignedTo: "",
+      points: '',
+      dueDate: null,
+      isComplete: false,
+      requestedComplete: false,
+      isVerified: false,
+      isRecurring: false,
+      minAge: null,
+      maxAge: null,
+      createdBy: null,
+    },
+  ]);
 
-  const [chores, setChores] = useState<Chore[]>(starterChores);
-  const [name, setName]     = useState("");
-  const [points, setPoints] = useState("10");
+  const updateChore = <K extends keyof Chore>(
+    index: number,
+    field: K,
+    value: Chore[K]
+  ) => {
+    const updated = [...chores];
+    updated[index][field] = value;
+    setChores(updated);
+  }; 
 
-  /* helpers */
-  const addCustomChore = () => {
-    if (!name.trim() || !points) return;
+  const addChoreRow = () => {
     setChores([
       ...chores,
-      { id: uuid(), name: name.trim(), points: parseInt(points) },
+      {
+        name: "",
+        assignedTo: "",
+        points: '',
+        dueDate: null,
+        isComplete: false,
+        requestedComplete: false,
+        isVerified: false,
+        isRecurring: false,
+        minAge: null,
+        maxAge: null,
+        createdBy: null,
+      },
     ]);
-    setName(""); setPoints("10");
   };
 
-  const finishOnboarding = async () => {
+  const removeChoreRow = (index: number) => {
+    const updated = chores.filter((_, i) => i !== index);
+    setChores(updated);
+  };
+
+  const submitChores = async () => {
     try {
-      const token       = await getToken();
-      const householdId = await getHouseholdId();
-      if (!token || !householdId) throw new Error("Missing auth");
-
-      await fetch("http://192.168.1.122:7070/api/chores/bulk", {
-        method : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization : `Bearer ${token}`,
-        },
-        body: JSON.stringify({ householdId, chores }),
-      });
-
-      // ▶ done – go to the Kids tab
-      router.replace("/(tabs)/kids");
-    } catch (err) {
-      console.error("Save chores failed:", err);
-      Alert.alert("Error", "Could not save chores.  Please try again.");
+      await axios.post("http://192.168.1.122:7070/api/chores/bulk", chores);
+      Alert.alert("Success", "Chores added successfully!");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Failed to add chores.");
     }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <View style={[styles.container, { backgroundColor: c.bg }]}>
-          <Text style={[styles.title, { color: c.text }]}>Add Chores</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.header}>Add Chores</Text>
 
-          <FlatList
-            data={chores}
-            keyExtractor={(c) => c.id}
-            renderItem={({ item }) => (
-              <Text style={[styles.item, { color: c.text }]}>
-                {item.name} – {item.points} pts
-              </Text>
-            )}
-            style={{ flexGrow: 0 }}
-          />
-
+      {chores.map((chore, index) => (
+        <View key={index} style={styles.card}>
           <TextInput
-            placeholder="Chore name"
-            placeholderTextColor="#888"
-            value={name}
-            onChangeText={setName}
-            style={[styles.input, { borderColor: c.border, color: c.text }]}
+            style={styles.input}
+            placeholder="Chore Name"
+            value={chore.name}
+            onChangeText={(text) => updateChore(index, "name", text)}
           />
-          <Picker
-            selectedValue={points}
-            onValueChange={setPoints}
-            style={{ color: c.text }}
-          >
-            {[10, 15, 20, 25, 30, 40].map((n) => (
-              <Picker.Item key={n} label={`${n} pts`} value={`${n}`} />
-            ))}
-          </Picker>
-          <Button title="Add chore" onPress={addCustomChore} />
-
-          <View style={{ marginTop: 24 }}>
-            <Button title="Finish" onPress={finishOnboarding} />
-          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Assigned To (optional)"
+            value={chore.assignedTo}
+            onChangeText={(text) => updateChore(index, "assignedTo", text)}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Points"
+            keyboardType="numeric"
+            value={chore.points.toString()}
+            onChangeText={(text) =>
+              updateChore(index, "points", parseInt(text) || 0)
+            }
+          />
+          <Button title="Remove" onPress={() => removeChoreRow(index)} />
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      ))}
+
+      <Button title="Add Another Chore" onPress={addChoreRow} />
+      <View style={{ marginVertical: 10 }} />
+      <Button title="Submit Chores" onPress={submitChores} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24 },
-  title:     { fontSize: 24, fontWeight: "600", marginBottom: 12 },
-  input:     {
-    borderWidth: 1,
-    borderRadius: 6,
-    padding: 10,
-    marginTop: 12,
+  container: {
+    padding: 20,
+    gap: 20,
   },
-  item:      { fontSize: 18, paddingVertical: 4 },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 10,
+    alignSelf: "center",
+  },
+  card: {
+    backgroundColor: "#eee",
+    padding: 15,
+    borderRadius: 10,
+    gap: 10,
+    marginBottom: 10,
+  },
+  input: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 5,
+  },
 });

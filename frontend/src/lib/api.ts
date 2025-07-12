@@ -1,43 +1,30 @@
-// ----------------------------------------------------------
-//  Centralised API helper – every screen imports from here
-// ----------------------------------------------------------
-import axios, { AxiosResponse } from "axios";
-import type { InternalAxiosRequestConfig } from "axios";
-import { getToken } from "./auth";
+/* ------------------------------------------------------------------
+   Central API helper – front-end screens import *only* from here
+   ------------------------------------------------------------------ */
+import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import { getToken, getUsername } from "./auth";
 
-/* -----------------  Axios config  ----------------- */
+/* ------------ Axios instance w/ automatic Bearer token ------------ */
 const BASE_URL = "http://192.168.1.122:7070/api";
 
-export const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 10_000,
+export const api = axios.create({ baseURL: BASE_URL, timeout: 10_000 });
+
+api.interceptors.request.use(async (cfg: InternalAxiosRequestConfig) => {
+  const token = await getToken();
+  if (token) {
+    cfg.headers = cfg.headers ?? {};
+    cfg.headers["Authorization"] = `Bearer ${token}`;
+  }
+  return cfg;
 });
 
-/* ---- Automatically add “Authorization: Bearer …” on every request ---- */
-api.interceptors.request.use(
-  async (cfg: InternalAxiosRequestConfig) => {
-    const token = await getToken();
-    if (token) {
-      cfg.headers = cfg.headers || {}; // fallback, still safe
-      if (typeof cfg.headers.set === "function") {
-        cfg.headers.set("Authorization", `Bearer ${token}`);
-      } else {
-        // fallback for older Axios versions or plain object
-        (cfg.headers as any)["Authorization"] = `Bearer ${token}`;
-      }
-    }
-    return cfg;
-  },
-  (err) => Promise.reject(err)
-);
-
-/* -------------------  Types  ------------------- */
+/* ----------------------------- Types ------------------------------ */
 export interface Kid {
-  id: number; // backend sends a number
-  name: string; // mapped from `username`
-  role: "kid" | "parent";
+  id: number;
+  username: string;          // ← raw from DB
+  name: string;              // ← UI-friendly alias
   age: number;
-  points?: number;
+  role: "kid" | "parent";
 }
 
 export interface Chore {
@@ -47,6 +34,8 @@ export interface Chore {
   points: number;
   complete: boolean;
   requestedComplete: boolean;
+  overdue?: boolean;         // derived in mapper
+  dueDate: string;
 }
 
 export interface Reward {
@@ -56,47 +45,81 @@ export interface Reward {
   requiresApproval: boolean;
 }
 
-/* ------- internal helper so all wrappers return data or throw ------- */
-const handle = async <T>(p: Promise<AxiosResponse<T>>): Promise<T> => {
-  try {
-    return (await p).data;
-  } catch (e: any) {
-    console.error("API error:", e?.response?.data ?? e.message);
+/* ---- internal helper so all calls return data †or throw ---- */
+const unwrap = async <T>(p: Promise<AxiosResponse<T>>): Promise<T> => {
+  try       { return (await p).data; }
+  catch (e: any) {
+    console.error("[API]", e.response?.data ?? e.message);
     throw e;
   }
 };
 
-/* ------------------  Exported calls  ------------------ */
-
-// Kids -----------------------------------------------------------------
+/* ===================================================================
+   ↳  Kids
+   =================================================================== */
 export const getKids = async (): Promise<Kid[]> => {
-  /** backend returns  [{ id, username, age, role, … }] */
-  const raw = await handle<
+  const raw = await unwrap<
     { id: number; username: string; age: number; role: "kid" | "parent" }[]
   >(api.get("/users/kids"));
 
-  /** This will map username to name so that the UI can view it and use it directly */
-  return raw.map((k) => ({
-    ...k,
-    name: k.username,
+  return raw.map((k) => ({ ...k, name: k.username }));
+};
+
+/* ===================================================================
+   ↳  Chores
+   Back-end route:  GET /api/chores/kid/<kidId>
+   =================================================================== */
+export const getChoresByKid = async (kidId: number): Promise<Chore[]> => {
+  const raw = await unwrap<
+    {
+      id: number;
+      name: string;
+      assignedTo: string;
+      points: number;
+      isComplete: boolean;
+      requestedComplete: boolean;
+      dueDate: string;
+    }[]
+  >(api.get(`/chores/kid/${kidId}`));
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  return raw.map((c) => ({
+    id: c.id,
+    name: c.name,
+    assignedTo: c.assignedTo,
+    points: c.points,
+    complete: c.isComplete,
+    requestedComplete: c.requestedComplete,
+    dueDate: c.dueDate,
+    overdue: !c.isComplete && c.dueDate < today,
   }));
 };
 
-// Chores ---------------------------------------------------------------
-export const getChoresByKid = (kidId: number): Promise<Chore[]> =>
-  handle(api.get("/chores", { params: { userId: kidId } }));
+export const createChore = (c: Partial<Chore>) => unwrap(api.post("/chores", c));
 
-export const createChore = (c: Partial<Chore>) =>
-  handle(api.post("/chores", c));
-
-// Rewards & Points -----------------------------------------------------
-export const getRewards = (): Promise<Reward[]> => handle(api.get("/rewards"));
+/* ===================================================================
+   ↳  Rewards & Points
+   =================================================================== */
+// GET /api/rewards
+export const getRewards = (): Promise<Reward[]> => unwrap(api.get("/rewards"));
 
 export const createReward = (r: Partial<Reward>) =>
-  handle(api.post("/rewards", r));
+  unwrap(api.post("/rewards", r));
 
+export const createRewardBulk = (
+  householdId: string, 
+  rewards:  { name: string; cost: number; requiresApproval: boolean }[]
+) => unwrap(api.post("/rewards/bulk", { householdId, rewards })); 
+
+// POST /api/rewards/redeem
 export const redeemReward = (rewardId: number, username: string) =>
-  handle(api.post("/rewards/redeem", { rewardId, username }));
+  unwrap(api.post("/rewards/redeem", { rewardId, username }));
 
-export const getPoints = (username: string): Promise<{ points: number }> =>
-  handle(api.get(`/points/${username}`));
+// GET /api/points-bank/<username>  → single user balance
+export const getPoints = (username: string) =>
+  unwrap<{ points: number }>(api.get(`/points-bank/${encodeURIComponent(username)}`));
+
+// GET /api/points-bank              → leaderboard
+export const getAllPoints = () =>
+  unwrap<{ [user: string]: number }>(api.get("/points-bank"));

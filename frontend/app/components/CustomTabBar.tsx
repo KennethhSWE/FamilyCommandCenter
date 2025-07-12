@@ -1,87 +1,118 @@
-import React from 'react';
-import { View, TouchableOpacity, Image, StyleSheet, Platform, Dimensions, Text } from 'react-native';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Circle } from 'react-native-svg';
+// frontend/components/CustomTabBar.tsx
+// ------------------------------------------------------------------
+//  Curved bottom tab bar with raised “Kids” button
+// ------------------------------------------------------------------
+import React from "react";
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Text,
+  useColorScheme,
+} from "react-native";
+import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
+import {
+  Feather,
+  FontAwesome5,
+  MaterialCommunityIcons,
+  MaterialIcons,
+} from "@expo/vector-icons";
 
-const { width } = Dimensions.get('window');
+/* ––––– constants ––––– */
+const { width: WIN_WIDTH } = Dimensions.get("window");
+const TAB_WIDTH = WIN_WIDTH / 5;
 
-const ICONS = {
-  calendar: require('../assets/images/calendar.png'),
-  kids: require('../assets/images/kids.png'),
-  rewards: require('../assets/images/reward.png'),
-  points: require('../assets/images/points.png'),
-  admin: require('../assets/images/admin.png'),
+/* ––––– icon resolver ––––– */
+const tabIcon = (route: string, color: string, size: number) => {
+  if (route.includes("kids"))
+    return <FontAwesome5 name="child" size={size} color={color} />;
+  if (route.includes("rewards"))
+    return <MaterialCommunityIcons name="gift-outline" size={size} color={color} />;
+  if (route.includes("points"))
+    return <MaterialIcons name="stars" size={size} color={color} />;
+  if (route.includes("admin"))
+    return <Feather name="settings" size={size} color={color} />;
+  return <MaterialIcons name="event" size={size} color={color} />; // calendar
 };
 
-const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
-    const insets = useSafeAreaInsets();
-    const windowWidth = Dimensions.get('window').width;
-    const svgWidth = width - 60;
-    const center = svgWidth /2;
+/* ––––– component ––––– */
+export default function CustomTabBar({
+  state,
+  descriptors,
+  navigation,
+}: BottomTabBarProps) {
+  const insets   = useSafeAreaInsets();
+  const scheme   = useColorScheme();
+  const colors   = scheme === "dark"
+    ? { bg: "#1e1e1e", active: "#8e44ad", text: "#fff", border: "#333" }
+    : { bg: "#fff",   active: "#007aff",  text: "#000", border: "#ccc" };
+
+  const SVG_W = WIN_WIDTH - 60;
+  const centerX = SVG_W / 2;
 
   return (
-    <View style={[styles.wrapper]}>
+    <>
+      {/*  curved background shape  */}
       <Svg
-        width={svgWidth}
-        height={120}
-        viewBox={`0 0 ${svgWidth} 100`}
-        style={styles.svg}
+        width={SVG_W}
+        height={100}
+        viewBox={`0 0 ${SVG_W} 100`}
+        style={[styles.svg, { bottom: 70 + insets.bottom }]}
       >
         <Path
           d={`
-            M0,0
-            H${center - 70}
-            C${center - 40},0 ${center - 40},40 ${center},40
-            C${center + 40},40 ${center + 40},0 ${center + 70},0
-            H${svgWidth}
-            V115
-            H0
-            Z
+            M0 0
+            H${centerX - 60}
+            C${centerX - 40} 0 ${centerX - 40} 40 ${centerX} 40
+            C${centerX + 40} 40 ${centerX + 40} 0 ${centerX + 60} 0
+            H${SVG_W} V100 H0 Z
           `}
-          fill="#ffffff"
-          stroke="#ccc"
-          strokeWidth={2.5}
+          fill={colors.bg}
+          stroke={colors.border}
+          strokeWidth={2}
         />
-        
       </Svg>
 
-      <View style={[styles.container, { paddingBottom: insets.bottom, height: 70 + insets.bottom }]}>
-        {state.routes.map((route, index) => {
-          const isFocused = state.index === index;
-          const routeName = route.name;
+      {/*  tab buttons  */}
+      <View
+        style={[
+          styles.row,
+          { paddingBottom: insets.bottom, bottom: 60 + insets.bottom },
+        ]}
+      >
+        {state.routes.map((route, idx) => {
+          const focused = state.index === idx;
+          const label   =
+            descriptors[route.key].options.tabBarLabel ??
+            descriptors[route.key].options.title ??
+            route.name;
 
           const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
+            const evt = navigation.emit({
+              type: "tabPress",
               target: route.key,
               canPreventDefault: true,
             });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
+            if (!focused && !evt.defaultPrevented) navigation.navigate(route.name);
           };
 
-          let iconKey: keyof typeof ICONS;
-
-          if (routeName.includes('kids')) iconKey = 'kids';
-          else if (routeName.includes('rewards')) iconKey = 'rewards';
-          else if (routeName.includes('points')) iconKey = 'points';
-          else if (routeName.includes('admin')) iconKey = 'admin';
-          else iconKey = 'calendar';
-
-          const isCenter = iconKey === 'kids';
+          /* center (Kids) gets elevated treatment */
+          const isCenter = route.name.toLowerCase().includes("kids");
+          const size     = isCenter ? 32 : 24;
+          const color    = focused ? colors.active : colors.text;
 
           if (isCenter) {
             return (
-              <View key={route.key} style={styles.centerButtonContainer}>
+              <View key={route.key} style={styles.centerWrapper}>
                 <TouchableOpacity
                   onPress={onPress}
-                  style={styles.centerButton}
                   activeOpacity={0.85}
+                  style={[styles.centerBtn, { backgroundColor: colors.bg, borderColor: colors.border }]}
                 >
-                  <Image source={ICONS[iconKey]} style={styles.centerIcon} resizeMode="contain" />
+                  {tabIcon(route.name, color, size)}
                 </TouchableOpacity>
               </View>
             );
@@ -90,105 +121,56 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
           return (
             <TouchableOpacity
               key={route.key}
+              accessibilityRole="button"
+              accessibilityState={focused ? { selected: true } : {}}
               onPress={onPress}
+              style={styles.tabBtn}
               activeOpacity={0.7}
-              style={styles.tabButton}
             >
-              <View style={styles.tabContent}>
-                <Image source={ICONS[iconKey]} style={styles.icon} resizeMode="contain" />
-                <Text style={isFocused ? styles.labelActive : styles.label}>
-                  {getTabLabel(routeName)}
-                </Text>
-              </View>
+              {tabIcon(route.name, color, size)}
+              <Text style={{ fontSize: 12, color }}>{label}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
-    </View>
+    </>
   );
-};
-
-function getTabLabel(routeName: string): string {
-  if (routeName.toLowerCase().includes('kids')) return 'Kids';
-  if (routeName.toLowerCase().includes('rewards')) return 'Rewards';
-  if (routeName.toLowerCase().includes('points')) return 'Points';
-  if (routeName.toLowerCase().includes('admin')) return 'Admin';
-  return 'Calendar';
 }
 
+/* ––––– styles ––––– */
 const styles = StyleSheet.create({
-  wrapper: {
-    position: 'absolute',
-    bottom: 60,
-    width: '100%',
-    alignItems: 'center',
-    zIndex: 0,
-  },
   svg: {
-    position: 'absolute',
-    bottom: 0,
-    zIndex: 0,
+    position: "absolute",
+    alignSelf: "center",
   },
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
-    elevation: 5,
-    backgroundColor: 'transparent',
-    marginHorizontal: 30,
-    borderRadius: 16,
+  row: {
+    flexDirection: "row",
+    position: "absolute",
+    width: WIN_WIDTH,
+    justifyContent: "space-around",
+    alignItems: "center",
   },
-  tabButton: {
-    flex: 0.9,
-    alignItems: 'center',
-    paddingVertical: 10,
-    marginHorizontal: 6,
+  tabBtn: {
+    width: TAB_WIDTH,
+    alignItems: "center",
+    paddingTop: 10,
   },
-  tabContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  centerWrapper: {
+    position: "absolute",
+    left: WIN_WIDTH / 2 - 38,
+    top: -30,
   },
-  icon: {
-    width: 75,
-    height: 75,
-    top: 20,
-  },
-  centerButtonContainer: {
-    position: 'absolute',
-    top: -45,
-    left: width / 2 - 65,
-    zIndex: 10,
-  },
-  centerButton: {
-    width: 75,
-    height: 75,
-    borderRadius: 35,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 10,
-    shadowColor: '#000',
+  centerBtn: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-  },
-  centerIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 25,
-  },
-  label: {
-    fontSize: 18,
-    color: '#888',
-    marginTop: 4,
-    fontWeight: '400',
-  },
-  labelActive: {
-    fontSize: 24,
-    color: '#007AFF',
-    marginTop: 4,
-    fontWeight: '700',
+    borderWidth: 1,
   },
 });
-
-export default CustomTabBar;

@@ -1,95 +1,75 @@
-import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect, useRef, useState } from 'react';
+// frontend/app/components/SplashAnimation.tsx
+//--------------------------------------------------------------
+//  Simple splash + fade-in logo
+//  onFinish() fires after `DURATION_MS` so the caller can redirect
+//--------------------------------------------------------------
+import React, { useEffect, useRef } from "react";
 import {
-  View,
-  Text,
-  ImageBackground,
-  StyleSheet,
   Animated,
   Easing,
-} from 'react-native';
+  Image,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-const loadingMessages = [
-  'Loading assets...',
-  'Preparing dashboard...',
-  'Syncing chores...',
-  'Fetching rewards...',
-  'Almost ready...'
-];
+const DURATION_MS = 2000;          // total splash time
 
-interface SplashProps {
-  onFinish?: () => void; // 
+/* ------------ props ------------ */
+interface SplashAnimationProps {
+  onFinish: () => void;            // required callback
 }
 
-export default function SplashAnimation({ onFinish }: SplashProps) {
-  const [messageIndex, setMessageIndex] = useState(0);
-  const progress = useRef(new Animated.Value(0)).current;
+/* ------------ component ------------ */
+export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    SplashScreen.hideAsync();
-    Animated.timing(progress, {
+    // fade-in animation
+    Animated.timing(opacity, {
       toValue: 1,
-      duration: 4000,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: false,
+      duration: 900,
+      easing: Easing.out(Easing.exp),
+      useNativeDriver: true,
     }).start(() => {
-      setTimeout(() => {
-        if (onFinish) onFinish();
-      }, 1000);                       // shows splash screen for 1 second more. 
+      // hold for a moment, then exit
+      const t = setTimeout(onFinish, DURATION_MS - 900);
+      return () => clearTimeout(t);
     });
-
-    const interval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % loadingMessages.length);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const progressWidth = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+  }, [opacity, onFinish]);
 
   return (
-    <ImageBackground
-      source={require('../assets/images/FamilyCommandCenterSplash.png')}
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <View style={styles.overlay}>
-        <Text style={styles.text}>{loadingMessages[messageIndex]}</Text>
-        <View style={styles.progressBar}>
-          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
-        </View>
-      </View>
-    </ImageBackground>
+    <View style={styles.container}>
+      <Animated.View style={{ opacity }}>
+        <Image
+          source={require("../assets/images/FamilyCommandCenterSplash.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.tagline}>Family Command Center</Text>
+      </Animated.View>
+    </View>
   );
 }
 
+/* ------------ styles ------------ */
 const styles = StyleSheet.create({
-  background: {
+  container: {
     flex: 1,
-    justifyContent: 'flex-end',
+    backgroundColor: "#121212",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  overlay: {
-    padding: 40,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+  logo: {
+    width: 220,
+    height: 220,
   },
-  text: {
-    color: '#fff',
+  tagline: {
+    marginTop: 12,
     fontSize: 18,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  progressBar: {
-    height: 10,
-    backgroundColor: '#444',
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#00d4ff',
+    fontWeight: "600",
+    color: "#00D4FF",
+    textAlign: "center",
+    letterSpacing: 0.5,
   },
 });
-

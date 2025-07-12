@@ -1,52 +1,63 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SecureStore from "expo-secure-store";
+// frontend/src/lib/auth.ts
+//--------------------------------------------------------------
+//  Tiny auth/storage helper used across the app
+//  • JWT token → Expo SecureStore   (device-secure)
+//  • householdId → AsyncStorage     (plain, non-sensitive)
+//--------------------------------------------------------------
+import * as SecureStore   from "expo-secure-store";
+import AsyncStorage       from "@react-native-async-storage/async-storage";
 
-// Keys – only letters, numbers, ., -
-const TOKEN_KEY = "fcc_token";
-const USER_KEY = "fcc_user";
-const HOUSEHOLD_KEY = "fcc_householdId";   
+/* ------------------------------------------------------------------
+   TOKEN  (secure)  ––––––––––––––––––––––––––––––––––––––––––––––––– */
+const TOKEN_KEY = "fcc.jwt";
 
-// User helpers (AsyncStorage)
-export async function checkIfUsersExist(): Promise<boolean> {
-  const user = await AsyncStorage.getItem(USER_KEY);
-  return !!user;
+// Extend globalThis to include __tokenCache
+declare global {
+  // eslint-disable-next-line no-var
+  var __tokenCache: string | undefined;
 }
 
-export async function saveUser(user: unknown): Promise<void> {
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
-}
+export const saveToken = (token: string) =>
+  SecureStore.setItemAsync(TOKEN_KEY, token);
 
-export async function getUser<T = any>(): Promise<T | null> {
-  const raw = await AsyncStorage.getItem(USER_KEY);
-  return raw ? (JSON.parse(raw) as T) : null;
-}
+export const getToken = () => SecureStore.getItemAsync(TOKEN_KEY);
 
-export async function clearUser(): Promise<void> {
-  await AsyncStorage.removeItem(USER_KEY);
-}
+export const deleteToken = () => SecureStore.deleteItemAsync(TOKEN_KEY);
 
-// Token helpers (SecureStore)
-export async function saveToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
-}
+/* ------------------------------------------------------------------
+   HOUSEHOLD ID  (non-sensitive)  ––––––––––––––––––––––––––––––––––– */
+const HH_KEY = "fcc.householdId";
 
-export async function getToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(TOKEN_KEY);
-}
+export const saveHouseholdId = (id: string) =>
+  AsyncStorage.setItem(HH_KEY, id);
 
-export async function clearToken(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-}
+export const getHouseholdId = () => AsyncStorage.getItem(HH_KEY);
 
-// ✅ HouseholdId helpers (AsyncStorage)    
-export async function saveHouseholdId(id: string): Promise<void> {
-  await AsyncStorage.setItem(HOUSEHOLD_KEY, id);
-}
+export const deleteHouseholdId = () => AsyncStorage.removeItem(HH_KEY);
 
-export async function getHouseholdId(): Promise<string | null> {
-  return AsyncStorage.getItem(HOUSEHOLD_KEY);
-}
+/* ------------------------------------------------------------------
+   DECODE USERNAME FROM JWT  (convenience) ––––––––––––––––––––––––– */
+export const getUsername = (): string => {
+  // quickest:  header.payload.signature  →  Base64URL decode payload
+  // no verification (read-only)
+  const jwt = globalThis.__tokenCache ?? null;
+  if (jwt) return jwt;                           // cached
 
-export async function clearHouseholdId(): Promise<void> {
-  await AsyncStorage.removeItem(HOUSEHOLD_KEY);
-}
+  (async () => {
+    const t = await getToken();
+    if (!t) return "";
+    const [, payloadB64] = t.split(".");
+    const json = JSON.parse(
+      decodeURIComponent(
+        atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"))
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      )
+    );
+    globalThis.__tokenCache = json.sub as string;
+    return json.sub as string;
+  })();
+
+  return "";
+};
