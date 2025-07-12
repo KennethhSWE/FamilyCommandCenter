@@ -9,16 +9,17 @@ import {
   Alert,
 } from "react-native";
 import axios from "axios";
+import { router } from "expo-router";
 
 interface Chore {
   name: string;
   assignedTo: string;
   points: number | string; 
   dueDate: string | null;
-  isComplete: boolean;
+  complete: boolean;
   requestedComplete: boolean;
-  isVerified: boolean;
-  isRecurring: boolean;
+  verified: boolean;
+  recurring: boolean;
   minAge: number | null;
   maxAge: number | null;
   createdBy: number | null;
@@ -31,10 +32,10 @@ export default function AddChoresScreen() {
       assignedTo: "",
       points: '',
       dueDate: null,
-      isComplete: false,
+      complete: false,
       requestedComplete: false,
-      isVerified: false,
-      isRecurring: false,
+      verified: false,
+      recurring: false,
       minAge: null,
       maxAge: null,
       createdBy: null,
@@ -59,10 +60,10 @@ export default function AddChoresScreen() {
         assignedTo: "",
         points: '',
         dueDate: null,
-        isComplete: false,
+        complete: false,
         requestedComplete: false,
-        isVerified: false,
-        isRecurring: false,
+        verified: false,
+        recurring: false,
         minAge: null,
         maxAge: null,
         createdBy: null,
@@ -78,7 +79,7 @@ export default function AddChoresScreen() {
   const submitChores = async () => {
     try {
       await axios.post("http://192.168.1.122:7070/api/chores/bulk", chores);
-      Alert.alert("Success", "Chores added successfully!");
+      router.replace("../(tabs)/kids");
     } catch (error) {
       console.error(error);
       Alert.alert("Error", "Failed to add chores.");
