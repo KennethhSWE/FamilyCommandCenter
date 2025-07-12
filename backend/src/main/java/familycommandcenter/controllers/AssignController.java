@@ -2,12 +2,22 @@ package familycommandcenter.controllers;
 
 import familycommandcenter.Database;
 import familycommandcenter.model.*;
-import java.sql.*; // ← Connection, PreparedStatement, SQLException
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
-public class AssignController {
+/**
+ * Creates / refreshes the daily chore list for every kid.
+ * <p>
+ *  • Carries over yesterday’s unfinished chores.<br>
+ *  • Adds up to five random pool-chores that match the kid’s age.<br>
+ *  • Never duplicates a chore already scheduled for today.
+ */
+public final class AssignController {
 
     private final UserDAO userDao;
 
@@ -15,46 +25,36 @@ public class AssignController {
         this.userDao = userDao;
     }
 
-    /** Run once every morning (or trigger manually) */
+    /** Trigger once each morning (or via POST /api/assign/daily). */
     public void assignDailyChores() {
+        LocalDate today      = LocalDate.now();
+        LocalDate yesterday  = today.minusDays(1);
 
-        LocalDate today = LocalDate.now();
-        LocalDate yesterday = today.minusDays(1);
-
-        /* get kids list safely */
         List<User> kids;
         try {
             kids = userDao.getUsersByRole("kid");
-        } catch (SQLException e) {
+        } catch (SQLException e) {                     // unlikely: connection pool down
             e.printStackTrace();
             return;
         }
 
-        kids.forEach(kid -> {
+        for (User kid : kids) {
             try {
-                /* 1 ▸ carry-over yesterday’s incomplete */
-                ChoreDataService.getIncompleteByKid(kid.getUsername()).stream()
-                        .filter(c -> LocalDate.parse(c.getDueDate()).isEqual(yesterday))
-                        .forEach(c -> {
-                            try {
-                                c.setDueDate(today.toString());
-                                ChoreDataService.insertAssignedChore(c);
-                            } catch (SQLException ex) {
-                                ex.printStackTrace();
-                            }
-                        });
+                /* 1 ─ carry-over yesterday’s unfinished work */
+                for (Chore c : ChoreDataService.getIncompleteByKid(kid.getUsername())) {
+                    if (!LocalDate.parse(c.getDueDate()).isEqual(yesterday)) continue;
+                    c.setDueDate(today.toString());
+                    ChoreDataService.insertAssignedChore(c);
+                }
 
-                /* 2 ▸ age-appropriate pool, shuffled */
+                /* 2 ─ select up to 5 new, age-appropriate chores */
                 List<Chore> pool = ChoreDataService.getPoolForKidAge(kid.getAge());
                 Collections.shuffle(pool);
 
-                /* 3 ▸ add up to 5 new chores not already on today’s list */
                 int added = 0;
                 for (Chore c : pool) {
-                    if (added == 5)
-                        break;
-                    if (alreadyAssignedToday(kid.getUsername(), c.getName()))
-                        continue;
+                    if (added == 5) break;
+                    if (alreadyAssignedToday(kid.getUsername(), c.getName())) continue;
 
                     c.setAssignedTo(kid.getUsername());
                     c.setDueDate(today.toString());
@@ -64,22 +64,23 @@ public class AssignController {
                 }
 
             } catch (SQLException e) {
-                e.printStackTrace();
+                e.printStackTrace();                   // continue with next kid
             }
-        });
+        }
     }
 
-    /** true if kid already has this chore for *today* */
+    /** Returns {@code true} if {@code username} already has {@code choreName} scheduled for today. */
     private boolean alreadyAssignedToday(String username, String choreName) throws SQLException {
         String sql = """
-                    SELECT 1 FROM chores
-                    WHERE assigned_to = ?
-                      AND name         = ?
-                      AND due_date     = CURRENT_DATE
-                    LIMIT 1
-                """;
+            SELECT 1 FROM chores
+             WHERE assigned_to = ?
+               AND name         = ?
+               AND due_date     = CURRENT_DATE
+             LIMIT 1
+        """;
         try (Connection c = Database.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
             ps.setString(1, username);
             ps.setString(2, choreName);
             return ps.executeQuery().next();

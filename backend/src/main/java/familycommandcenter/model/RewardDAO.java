@@ -1,109 +1,93 @@
 package familycommandcenter.model;
 
+import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class RewardDAO {
-    private final Connection conn;
+/**
+ * DAO for the <code>rewards</code> table.<br>
+ * Columns: id, name, cost, requires_approval
+ */
+public final class RewardDAO {
 
-    public RewardDAO(Connection conn) {
-        this.conn = conn;
+    private final DataSource ds;
+
+    public RewardDAO(DataSource ds) {
+        this.ds = ds;
     }
 
-    public void addReward(Reward reward) throws SQLException {
-        String sql = "INSERT INTO rewards (name, cost, requires_approval) VALUES (?, ?, ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, reward.getName());
-            stmt.setInt(2, reward.getCost());
-            stmt.setBoolean(3, reward.isRequiresApproval());
-            stmt.executeUpdate();
+    /* ───────────────────────────── inserts ───────────────────────────── */
+
+    public void addReward(Reward r) throws SQLException {
+        final String sql = "INSERT INTO rewards (name, cost, requires_approval) VALUES (?,?,?)";
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setString (1, r.getName());
+            ps.setInt    (2, r.getCost());
+            ps.setBoolean(3, r.isRequiresApproval());
+            ps.executeUpdate();
         }
     }
 
-    // Method to update an existing reward
+    /* ───────────────────────────── queries ───────────────────────────── */
+
+    public Optional<Reward> getRewardById(int id) throws SQLException {
+        final String sql = "SELECT * FROM rewards WHERE id = ?";
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
+            }
+        }
+    }
+
     public List<Reward> getAllRewards() throws SQLException {
-        List<Reward> rewards = new ArrayList<>();
-        String sql = "SELECT * FROM rewards";
-        try (PreparedStatement stmt = conn.prepareStatement(sql);
-                ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                Reward reward = new Reward();
-                reward.setId(rs.getInt("id"));
-                reward.setName(rs.getString("name"));
-                reward.setCost(rs.getInt("cost"));
-                reward.setRequiresApproval(rs.getBoolean("requires_approval"));
-                rewards.add(reward);
-            }
+        final String sql = "SELECT * FROM rewards ORDER BY cost ASC";
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            List<Reward> list = new ArrayList<>();
+            while (rs.next()) list.add(map(rs));
+            return list;
         }
-        return rewards;
     }
 
-    // Method to update an existing reward
-    public Optional<Reward> getRewardById(int id) {
-        String sql = "SELECT * FROM rewards WHERE id = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, id);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                Reward reward = new Reward();
-                reward.setId(rs.getInt("id"));
-                reward.setName(rs.getString("name"));
-                reward.setCost(rs.getInt("cost"));
-                reward.setRequiresApproval(rs.getBoolean("requires_approval"));
-                return Optional.of(reward);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return Optional.empty();
-    }
-
-    // Method to create a redemption for a reward
-    public List<Redemption> getRedemptionsForUser(String username) throws SQLException {
-        List<Redemption> redemptions = new ArrayList<>();
-        String sql = "SELECT * FROM redemptions WHERE username = ? ORDER BY redeemed_at DESC";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, username);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                Redemption r = new Redemption();
-                r.setId(rs.getInt("id"));
-                r.setUsername(rs.getString("username"));
-                r.setRewardId(rs.getInt("reward_id"));
-                r.setStatus(rs.getString("status"));
-                r.setRedeemedAt(rs.getTimestamp("redeemed_at").toLocalDateTime());
-                redemptions.add(r);
-            }
-        }
-        return redemptions;
-    }
-
-    // Method to get all available rewards for a user based on their points
-    public List<Reward> getAvailableRewardsForUser(String username) throws SQLException {
-        List<Reward> rewards = new ArrayList<>();
-
-        String sql = """
-                SELECT r.*
-                FROM rewards r
-                JOIN points_bank p ON p.username = ?
-                WHERE r.cost <= p.points
+    /**
+     * Rewards the kid can currently afford, given their point balance.
+     * <p>Relies on <code>points_bank.total_points</code>.</p>
+     */
+    public List<Reward> getAffordableRewards(String username, int currentPoints) throws SQLException {
+        final String sql = """
+            SELECT * FROM rewards
+             WHERE cost <= ?
+             ORDER BY cost ASC
         """;
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
 
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, username);
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                Reward reward = new Reward();
-                reward.setId(rs.getInt("id"));
-                reward.setName(rs.getString("name"));
-                reward.setCost(rs.getInt("cost"));
-                reward.setRequiresApproval(rs.getBoolean("auto_approve"));
-                rewards.add(reward);
+            ps.setInt(1, currentPoints);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<Reward> list = new ArrayList<>();
+                while (rs.next()) list.add(map(rs));
+                return list;
             }
         }
-        return rewards;
+    }
+
+    /* ────────────────────────── helper mapper ────────────────────────── */
+
+    private Reward map(ResultSet rs) throws SQLException {
+        Reward r = new Reward();
+        r.setId               (rs.getInt   ("id"));
+        r.setName             (rs.getString("name"));
+        r.setCost             (rs.getInt   ("cost"));
+        r.setRequiresApproval (rs.getBoolean("requires_approval"));
+        return r;
     }
 }
