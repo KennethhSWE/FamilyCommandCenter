@@ -64,7 +64,7 @@ export default function KidsTab() {
     return (
       <View style={[styles.center, { backgroundColor: colors.bg }]}>
         <KidCard
-          data={{ id: "0", name: "No kids yet", role: "kid", points: 0 }}
+          data={{ username: "none", name: "No kids yet", role: "kid" }}
           width={CARD_WIDTH}
           onPress={() => {}}
         />

@@ -38,6 +38,9 @@ export default function KidCard({
   const progressAnim = useState(new Animated.Value(0))[0];
 
   useEffect(() => {
+    console.log("KidCard data:", data);
+    if (!data.username || data.username === "none") return;
+
     const fetchPoints = async () => {
       try {
         const res = await axios.get(
@@ -45,6 +48,8 @@ export default function KidCard({
         );
         const fetchedPoints = res.data.total_points || 0;
         setPoints(fetchedPoints);
+        console.log("Fetched points from backend:", fetchedPoints);
+
 
         // Animate progress ring
         Animated.timing(progressAnim, {
@@ -74,7 +79,11 @@ export default function KidCard({
   };
 
   return (
-    <TouchableOpacity activeOpacity={0.85} onPress={handlePress} style={{ width }}>
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={handlePress}
+      style={{ width }}
+    >
       <LinearGradient
         colors={isCentered ? ["#FFFFFF", "#F2F6FF"] : ["#FFF", "#FFF"]}
         start={{ x: 0, y: 0 }}
