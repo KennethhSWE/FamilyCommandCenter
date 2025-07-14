@@ -3,6 +3,7 @@ package familycommandcenter.model;
 import familycommandcenter.Database;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.*;
 
 public class ChoreDataService {
@@ -25,11 +26,36 @@ public class ChoreDataService {
                 rs.getObject("created_by") != null ? rs.getInt("created_by") : null);
     }
 
-    public static void addChore(Chore c) throws SQLException {
-        if (c.getAssignedTo() == null || c.getAssignedTo().isBlank()) {
-            addChoreToPool(c);
-        } else {
-            insertAssignedChore(c);
+    public static void addChore(Chore chore) {
+        try (Connection conn = Database.getConnection()) {
+            PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO chores (name, assigned_to, is_complete, due_date, points, is_verified, requested_complete, complete, min_age, max_age, created_by, is_recurring) "
+                            +
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+            ps.setString(1, chore.getName());
+            ps.setString(2, chore.getAssignedTo());
+            ps.setBoolean(3, chore.isComplete());
+
+            // If due date is null, use current date
+            if (chore.getDueDate() == null) {
+                ps.setDate(4, java.sql.Date.valueOf(LocalDate.now()));
+            } else {
+                ps.setDate(4, java.sql.Date.valueOf(chore.getDueDate()));
+            }
+
+            ps.setInt(5, chore.getPoints());
+            ps.setBoolean(6, chore.isVerified());
+            ps.setBoolean(7, chore.isRequestedComplete());
+            ps.setBoolean(8, chore.isComplete());
+            ps.setObject(9, chore.getMinAge(), java.sql.Types.INTEGER);
+            ps.setObject(10, chore.getMaxAge(), java.sql.Types.INTEGER);
+            ps.setObject(11, chore.getCreatedBy(), java.sql.Types.INTEGER);
+            ps.setBoolean(12, chore.isRecurring());
+
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 

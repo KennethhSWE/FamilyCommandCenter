@@ -7,6 +7,9 @@ import familycommandcenter.model.*;
 import familycommandcenter.util.*;
 import io.javalin.Javalin;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -89,9 +92,21 @@ public final class App {
             Req req = JSON.readValue(ctx.body(), Req.class);
 
             for (KidPayload k : req.kids()) {
+                String hashedPin = PasswordUtils.hashPassword("0000");
+
+                // Save to users
                 userDAO.save(new User(
-                        0, k.name(), PasswordUtils.hashPassword("0000"),
+                        0, k.name(), hashedPin,
                         LocalDateTime.now(), k.age(), "kid", req.householdId()));
+
+                // Save to points_bank with 0 points
+                try (Connection conn = Database.getConnection()) {
+                    PreparedStatement ps = conn.prepareStatement(
+                            "INSERT INTO points_bank (user_name, total_points) VALUES (?, ?)");
+                    ps.setString(1, k.name());
+                    ps.setInt(2, 0);
+                    ps.executeUpdate();
+                }
             }
 
             ctx.status(201);
@@ -181,6 +196,26 @@ public final class App {
                 ctx.status(200);
             } else {
                 ctx.status(400).result("Redemption not found");
+            }
+        });
+
+        api.get("/api/points/{username}", ctx -> {
+            String username = ctx.pathParam("username");
+            try (Connection conn = Database.getConnection()) {
+                PreparedStatement ps = conn.prepareStatement(
+                        "SELECT total_points FROM points_bank WHERE user_name = ?");
+                ps.setString(1, username);
+                ResultSet rs = ps.executeQuery();
+
+                if (rs.next()) {
+                    int totalPoints = rs.getInt("total_points");
+                    ctx.json(Map.of("user_name", username, "total_points", totalPoints));
+                } else {
+                    ctx.status(404).result("User not found in points_bank");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                ctx.status(500).result("Server error fetching points");
             }
         });
 
