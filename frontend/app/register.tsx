@@ -1,14 +1,22 @@
-// frontend/app/register.tsx
+import {
+  useFonts,
+  Poppins_600SemiBold,
+  Poppins_400Regular,
+} from "@expo-google-fonts/poppins";
 import React, { useEffect, useState } from "react";
+import LottieView from "lottie-react-native";
 import {
   View,
   Text,
   TextInput,
+  Image,
   Pressable,
   StyleSheet,
   Alert,
   ActivityIndicator,
   useColorScheme,
+  SafeAreaView,
+  Dimensions,
 } from "react-native";
 import { router } from "expo-router";
 import {
@@ -18,11 +26,13 @@ import {
   getHouseholdId,
 } from "../src/lib/auth";
 
+const SCREEN_WIDTH = Dimensions.get("window").width;
+
 export default function RegisterScreen() {
   const [adminName, setAdminName] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
-  const scheme = useColorScheme(); // "light" | "dark" | null
+  const scheme = useColorScheme();
 
   useEffect(() => {
     (async () => {
@@ -63,103 +73,178 @@ export default function RegisterScreen() {
     }
   };
 
+  let [fontsLoaded] = useFonts({
+    Poppins_600SemiBold,
+    Poppins_400Regular,
+  });
+
+  if (!fontsLoaded) return null;
+
   const colors =
     scheme === "dark"
-      ? { bg: "#000", text: "#FFF", border: "#555", input: "#222", btn: "#0ff" }
-      : { bg: "#FFF", text: "#000", border: "#CCC", input: "#FFF", btn: "#00d4ff" };
+      ? {
+          bg: "#1B0A2A",
+          text: "#FDFEFE",
+          border: "#6A1B9A",
+          input: "#2A0A3D",
+          btn: "#F4D03F",
+        }
+      : {
+          bg: "#E8DAEF",
+          text: "#5B2C6F",
+          border: "#D7BDE2",
+          input: "#FFF",
+          btn: "#F4D03F",
+        };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.title, { color: colors.text }]}>
-        🎉 Welcome to the Family Command Center
-      </Text>
-
-      <Text style={[styles.label, { color: colors.text }]}>Parent name</Text>
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.input,
-            borderColor: colors.border,
-            color: colors.text,
-          },
-        ]}
-        placeholder="e.g. Danielle"
-        placeholderTextColor={scheme === "dark" ? "#888" : "#AAA"}
-        value={adminName}
-        onChangeText={setAdminName}
+    <SafeAreaView style={styles.container}>
+      <LottieView
+        source={require("../app/assets/lottie/stars.json")}
+        autoPlay
+        loop
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: Dimensions.get("window").width,
+          height: Dimensions.get("window").height,
+          zIndex: 0,
+        }}
       />
 
-      <Text style={[styles.label, { color: colors.text }]}>4-digit PIN</Text>
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.input,
-            borderColor: colors.border,
-            color: colors.text,
-          },
-        ]}
-        placeholder="e.g. 1234"
-        placeholderTextColor={scheme === "dark" ? "#888" : "#AAA"}
-        keyboardType="numeric"
-        secureTextEntry
-        maxLength={4}
-        value={pin}
-        onChangeText={setPin}
-      />
+      <View style={[styles.innerContainer, { width: SCREEN_WIDTH }]}>
+        <Image
+          source={require("../app/assets/images/icon.png")}
+          style={styles.logo}
+        />
+        <Text style={[styles.title, { color: colors.text }]}>
+          🎉 Welcome to the Family Command Center
+        </Text>
 
-      <Pressable
-        onPress={handleRegister}
-        style={({ pressed }) => [
-          styles.button,
-          {
-            backgroundColor: colors.btn,
-            opacity: pressed || loading ? 0.7 : 1,
-          },
-        ]}
-        disabled={adminName.trim() === "" || pin.length !== 4 || loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#000" />
-        ) : (
-          <Text style={styles.buttonText}>Register & Begin</Text>
-        )}
-      </Pressable>
-    </View>
+        <View style={styles.form}>
+          <Text style={[styles.label, { color: colors.btn }]}>Parent name</Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.input,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
+            placeholder="e.g. Danielle"
+            placeholderTextColor={scheme === "dark" ? "#888" : "#AAA"}
+            value={adminName}
+            onChangeText={setAdminName}
+          />
+
+          <Text style={[styles.label, { color: colors.btn }]}>4-digit PIN</Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.input,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
+            placeholder="e.g. 1234"
+            placeholderTextColor={scheme === "dark" ? "#888" : "#AAA"}
+            keyboardType="numeric"
+            secureTextEntry
+            maxLength={4}
+            value={pin}
+            onChangeText={setPin}
+          />
+
+          <Pressable
+            onPress={handleRegister}
+            style={({ pressed }) => [
+              styles.button,
+              {
+                backgroundColor: colors.btn,
+                opacity: pressed || loading ? 0.7 : 1,
+              },
+            ]}
+            disabled={adminName.trim() === "" || pin.length !== 4 || loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <Text style={styles.buttonText}>Register & Begin</Text>
+            )}
+          </Pressable>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
+    width: "100%",
+    height: "100%",
     justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 60,
+  },
+  fullScreen: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+  innerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingHorizontal: 20,
+    paddingTop: 40,
+  },
+  logo: {
+    width: 240,
+    height: 240,
+    resizeMode: "contain",
+    marginBottom: 10,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 32,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 26,
     textAlign: "center",
+    marginBottom: 24,
+    paddingHorizontal: 10,
+    lineHeight: 36,
+  },
+  form: {
+    width: "90%", // maintain nice spacing
   },
   label: {
+    fontFamily: "Poppins_400Regular",
     fontSize: 16,
     fontWeight: "500",
-    marginTop: 16,
-    marginBottom: 4,
+    marginBottom: 6,
+    marginLeft: 6,
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 3,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 18,
+    marginBottom: 16,
+    width: "100%",
   },
   button: {
-    marginTop: 32,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   buttonText: {
     fontSize: 18,
