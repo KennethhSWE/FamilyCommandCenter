@@ -113,7 +113,7 @@ export default function RegisterScreen() {
         }}
       />
 
-      <View style={[styles.innerContainer, { width: SCREEN_WIDTH }]}>
+      <View style={[styles.innerContainer, { width:  SCREEN_WIDTH }]}>
         <Image
           source={require("../app/assets/images/icon.png")}
           style={styles.logo}

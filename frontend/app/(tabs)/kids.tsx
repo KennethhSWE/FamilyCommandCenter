@@ -49,7 +49,18 @@ export default function KidsTab() {
     }
   }, []);
 
-  useEffect(() => { loadKids(); }, [loadKids]);
+  useEffect(() => {
+  const checkKids = async () => {
+    await loadKids();
+    // Only redirect if no kids are found
+    const latestKids = await getKids();
+    if (!latestKids || latestKids.length === 0) {
+      router.replace("../register");
+    }
+  };
+
+  checkKids();
+}, [loadKids]);
 
   /* ------------------------ UI states ----------------------- */
   if (loading) {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,14 @@ import {
   Alert,
 } from "react-native";
 import axios from "axios";
+import { Picker } from "@react-native-picker/picker";
 import { router } from "expo-router";
+import { getHouseholdId } from "../../src/lib/auth";
 
 interface Chore {
   name: string;
   assignedTo: string;
-  points: number | string; 
+  points: number | string;
   dueDate: string | null;
   complete: boolean;
   requestedComplete: boolean;
@@ -30,7 +32,7 @@ export default function AddChoresScreen() {
     {
       name: "",
       assignedTo: "",
-      points: '',
+      points: "",
       dueDate: null,
       complete: false,
       requestedComplete: false,
@@ -42,6 +44,24 @@ export default function AddChoresScreen() {
     },
   ]);
 
+  const [kids, setkids] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchKids = async () => {
+      try {
+        const householdId = await getHouseholdId();
+        const response = await axios.get(
+          "http://192.168.122/api/household/kids?householeId=${householdId}"
+        );
+        const kidsNames = response.data.map((k: { name: string }) => k.name);
+        setkids(kidsNames);
+      } catch (error) {
+        console.error("Error fetching kids:", error);
+      }
+    };
+    fetchKids();
+  }, []);
+
   const updateChore = <K extends keyof Chore>(
     index: number,
     field: K,
@@ -50,7 +70,7 @@ export default function AddChoresScreen() {
     const updated = [...chores];
     updated[index][field] = value;
     setChores(updated);
-  }; 
+  };
 
   const addChoreRow = () => {
     setChores([
@@ -58,7 +78,7 @@ export default function AddChoresScreen() {
       {
         name: "",
         assignedTo: "",
-        points: '',
+        points: "",
         dueDate: null,
         complete: false,
         requestedComplete: false,
@@ -98,6 +118,20 @@ export default function AddChoresScreen() {
             value={chore.name}
             onChangeText={(text) => updateChore(index, "name", text)}
           />
+
+          <Picker
+            selectedValue={chore.assignedTo}
+            onValueChange={(itemValue) =>
+              updateChore(index, "assignedTo", itemValue)
+            }
+            style={styles.input}
+          >
+            <Picker.Item label="Select Kid" value="" />
+            {kids.map((kid) => (
+              <Picker.Item key={kid} label={kid} value={kid} />
+            ))}
+          </Picker>
+          
           <TextInput
             style={styles.input}
             placeholder="Assigned To (optional)"
