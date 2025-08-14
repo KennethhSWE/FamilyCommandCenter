@@ -210,4 +210,13 @@ public class ChoreDataService {
             return map;
         }
     }
+
+    public static boolean markComplete(int choreId) throws SQLException {
+        String sql = "UPDATE chores SET is_complete = TRUE WHERE id = ?";
+        try (Connection c = Database.getConnection();
+        PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, choreId);
+            return ps.executeUpdate() == 1;
+        }
+    }
 }

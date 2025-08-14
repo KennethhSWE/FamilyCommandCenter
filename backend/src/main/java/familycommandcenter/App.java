@@ -30,7 +30,7 @@ public final class App {
 
         Javalin api = Javalin.create(config -> config.plugins.enableCors(cors -> cors.add(it -> it.anyHost())))
                 .start(7070);
-        System.out.println("✅  Javalin listening on :7070");
+        System.out.println("Javalin listening on :7070");
 
         /*
          * AUTH + ONBOARDING
@@ -157,6 +157,18 @@ public final class App {
             int id = Integer.parseInt(ctx.pathParam("id"));
             ChoreDataService.deleteChore(id);
             ctx.status(204);
+        });
+
+        api.post("/api/chores/complete/{id}", ctx -> {
+            int id = Integer.parseInt(ctx.pathParam("id"));
+            try {
+                boolean ok = ChoreDataService.markComplete(id);
+                if (ok) ctx.status(200).json(Map.of("id", id, "complete", true));
+                else ctx.status(404).result("Chore not found");
+            } catch (Exception e) {
+                e.printStackTrace();
+                ctx.status(500).result("Failed to complete chore");
+            }
         });
 
         /*
