@@ -10,25 +10,46 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import Toast from "react-native-toast-message";
-import { getAllPoints } from "../../src/lib/api"; // fetches /points-bank
+
+import { getKidsByHousehold, getPoints } from "../../src/lib/api";
+import { getHouseholdId } from "../../src/lib/auth";
+
+type Row = { user_name: string; total_points: number };
 
 export default function PointsScreen() {
-  const [data, setData] = useState<{ user_name: string; total_points: number }[]>([]);
+  const [data, setData] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const scheme = useColorScheme();
-
-  const isDark = scheme === "dark";
+  const isDark = useColorScheme() === "dark";
 
   const loadPoints = async () => {
     try {
       setLoading(true);
-      const points = await getAllPoints(); // GET /api/points-bank
-      const sorted = points.sort((a, b) => b.total_points - a.total_points);
-      setData(sorted);
+
+      const hh = await getHouseholdId();
+      if (!hh) {
+        setData([]);
+        return;
+      }
+
+      const kids = await getKidsByHousehold(hh);
+      const rows: Row[] = await Promise.all(
+        kids.map(async (k) => {
+          try {
+            const { points } = await getPoints(k.username);
+            return { user_name: k.username, total_points: points ?? 0 };
+          } catch {
+            return { user_name: k.username, total_points: 0 };
+          }
+        })
+      );
+
+      rows.sort((a, b) => b.total_points - a.total_points);
+      setData(rows);
     } catch (err) {
-      console.error(err);
+      console.error("[Points] load failed:", err);
       Toast.show({ type: "error", text1: "Failed to load points" });
+      setData([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -66,8 +87,9 @@ export default function PointsScreen() {
       <Text style={[styles.header, { color: isDark ? "#0ff" : "#27ae60" }]}>
         🏆 Points Leaderboard
       </Text>
-      {data.map((kid, index) => (
-        <View key={index} style={styles.pointsRow}>
+
+      {data.map((kid) => (
+        <View key={kid.user_name} style={styles.pointsRow}>
           <Text style={[styles.name, { color: isDark ? "#fff" : "#000" }]}>
             {kid.user_name}
           </Text>

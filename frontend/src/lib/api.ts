@@ -7,6 +7,7 @@ import { getToken, getUsername } from "./auth";
 /* ------------ Axios instance w/ automatic Bearer token ------------ */
 const BASE_URL = "http://192.168.1.122:7070/api";
 
+
 export const api = axios.create({ baseURL: BASE_URL, timeout: 10_000 });
 
 api.interceptors.request.use(async (cfg: InternalAxiosRequestConfig) => {
@@ -55,7 +56,7 @@ const unwrap = async <T>(p: Promise<AxiosResponse<T>>): Promise<T> => {
 };
 
 /* ===================================================================
-   ↳  Kids
+     Kids
    =================================================================== */
 export const getKids = async (): Promise<Kid[]> => {
   const raw = await unwrap<
@@ -66,7 +67,7 @@ export const getKids = async (): Promise<Kid[]> => {
 };
 
 /* ===================================================================
-   ↳  Chores
+    Chores
    Back-end route:  GET /api/chores/kid/<kidId>
    =================================================================== */
 export const getChoresByKid = async (kidId: number): Promise<Chore[]> => {
@@ -99,7 +100,7 @@ export const getChoresByKid = async (kidId: number): Promise<Chore[]> => {
 export const createChore = (c: Partial<Chore>) => unwrap(api.post("/chores", c));
 
 /* ===================================================================
-   ↳  Rewards & Points
+     Rewards & Points
    =================================================================== */
 // GET /api/rewards
 export const getRewards = (): Promise<Reward[]> => unwrap(api.get("/rewards"));
@@ -123,3 +124,25 @@ export const getPoints = (username: string) =>
 // GET /api/points-bank              → leaderboard
 export const getAllPoints = () =>
   unwrap<{ [user: string]: number }>(api.get("/points-bank"));
+
+// Kid type this file already uses, mapping username -> name in other helpers
+export type kid = { id: number; username: string; name: string; age: number; role: "kid" | "parent"};
+
+// Drop this at the bottom of frontend/src/lib/api.ts (replace your current version)
+
+/* ===================================================================
+     Kids (household-scoped)
+   Back-end route:  GET /api/kids/{householdId}
+   =================================================================== */
+export const getKidsByHousehold = async (householdId: string): Promise<Kid[]> => {
+  // Validate input so we fail fast instead of hitting the network with an empty string
+  if (!householdId) throw new Error("getKidsByHousehold: missing householdId");
+
+  const raw = await unwrap<
+    { id: number; username: string; age: number; role: "kid" | "parent" }[]
+  >(api.get(`/kids/${encodeURIComponent(householdId)}`));
+
+  // Map DB shape to UI shape (we expose `name` while keeping `username`)
+  return raw.map((k) => ({ ...k, name: k.username }));
+};
+

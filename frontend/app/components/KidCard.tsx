@@ -11,12 +11,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import axios from "axios";
+import { DarkTheme } from "@react-navigation/native";
 
 export interface Kid {
   username: string;
   name: string;
-  avatar?: string;
   role: "kid" | "parent";
+  age?: number;
+  avatar?: string; // Optional avatar URL
 }
 
 interface KidCardProps {
@@ -26,16 +28,18 @@ interface KidCardProps {
   isCentered?: boolean;
 }
 
-const MAX_POINTS = 100; // You can make this dynamic later
+const MAX_POINTS = 100; // make this dynamic later
 
 export default function KidCard({
   data,
   width,
   onPress,
-  isCentered = false,
-}: KidCardProps) {
+  isCentered = false } : KidCardProps) {
   const [points, setPoints] = useState<number>(0);
   const progressAnim = useState(new Animated.Value(0))[0];
+
+  const avatarUri = data.avatar || 'https://ui-avatars.com/api/?background = F5F5F5&color=111&name=${encodeURIComponent(data.name || data.username || "Kid")}';
+
 
   useEffect(() => {
     console.log("KidCard data:", data);

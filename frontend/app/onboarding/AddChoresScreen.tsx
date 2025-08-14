@@ -12,6 +12,7 @@ import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
 import { router } from "expo-router";
 import { getHouseholdId } from "../../src/lib/auth";
+import { getKidsByHousehold } from "../../src/lib/api";
 
 interface Chore {
   name: string;
@@ -50,13 +51,13 @@ export default function AddChoresScreen() {
     const fetchKids = async () => {
       try {
         const householdId = await getHouseholdId();
-        const response = await axios.get(
-          "http://192.168.122/api/household/kids?householeId=${householdId}"
-        );
-        const kidsNames = response.data.map((k: { name: string }) => k.name);
-        setkids(kidsNames);
-      } catch (error) {
-        console.error("Error fetching kids:", error);
+        if (!householdId) throw new Error("No householdId in storage")
+
+        const kids = await getKidsByHousehold(householdId);
+        setkids(kids.map(k => k.name));
+      }catch (error) {
+        console.error("Error Fetching kids:", error);
+        setkids([]);
       }
     };
     fetchKids();
@@ -121,8 +122,8 @@ export default function AddChoresScreen() {
 
           <Picker
             selectedValue={chore.assignedTo}
-            onValueChange={(itemValue) =>
-              updateChore(index, "assignedTo", itemValue)
+            onValueChange={(username) =>
+              updateChore(index, "assignedTo", username)
             }
             style={styles.input}
           >

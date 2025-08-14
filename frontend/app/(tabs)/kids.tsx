@@ -2,7 +2,7 @@
 //--------------------------------------------------------------
 //  Kids tab – fetch household kids & display them in a carousel
 //--------------------------------------------------------------
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -10,57 +10,68 @@ import {
   StyleSheet,
   View,
   useColorScheme,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import Carousel from "react-native-reanimated-carousel";
 import * as Haptics from "expo-haptics";
 
-import { getKids, Kid } from "../../src/lib/api";
+import { getKidsByHousehold, Kid } from "../../src/lib/api";
+import { getHouseholdId } from "../../src/lib/auth";
 import KidCard from "../components/KidCard";
 
 /* ───────────────────────── constants ───────────────────────── */
 const { width, height } = Dimensions.get("window");
-const CARD_WIDTH  = width  * 0.9;
+const CARD_WIDTH = width * 0.9;
 const CARD_HEIGHT = height * 0.75;
 
 /* ───────────────────────── component ───────────────────────── */
 export default function KidsTab() {
-  const router   = useRouter();
-  const scheme   = useColorScheme();
-  const colors   = scheme === "dark"
-    ? { bg: "#000", loader: "#888" }
-    : { bg: "#FFF", loader: "#444" };
+  const router = useRouter();
+  const scheme = useColorScheme();
+  const colors =
+    scheme === "dark"
+      ? { bg: "#000", loader: "#888" }
+      : { bg: "#FFF", loader: "#444" };
 
-  const [kids,      setKids]      = useState<Kid[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [refreshing,setRefreshing]= useState(false);
-  const [focused,   setFocused]   = useState(0);
+  const [kids, setKids] = useState<Kid[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [focused, setFocused] = useState(0);
 
   /* ---------------------- data fetcher ---------------------- */
   const loadKids = useCallback(async () => {
     try {
-      const list = await getKids();
+      const hh = await getHouseholdId();
+      if (!hh) {
+        // No household yet → bounce to register
+        router.replace("/register");
+        return;
+      }
+      const list = await getKidsByHousehold(hh);
       setKids(list);
+
+      // If household exists but has no kids, go to register flow
+      if (!list || list.length === 0) {
+        router.replace("/register");
+      }
     } catch (e) {
       console.error("Failed to load kids:", e);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [router]);
 
-  useEffect(() => {
-  const checkKids = async () => {
-    await loadKids();
-    // Only redirect if no kids are found
-    const latestKids = await getKids();
-    if (!latestKids || latestKids.length === 0) {
-      router.replace("../register");
-    }
-  };
-
-  checkKids();
-}, [loadKids]);
+  // Refetch whenever this tab/screen gains focus (also runs on first mount)
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadKids();
+      // no cleanup needed
+    }, [loadKids])
+  );
 
   /* ------------------------ UI states ----------------------- */
   if (loading) {
@@ -75,7 +86,7 @@ export default function KidsTab() {
     return (
       <View style={[styles.center, { backgroundColor: colors.bg }]}>
         <KidCard
-          data={{ username: "none", name: "No kids yet", role: "kid" }}
+          data={{ username: "none", name: "No kids yet", role: "kid" as const }}
           width={CARD_WIDTH}
           onPress={() => {}}
         />
@@ -85,7 +96,18 @@ export default function KidsTab() {
 
   /* ------------------------ main UI ------------------------ */
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <ScrollView
+      contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            loadKids();
+          }}
+        />
+      }
+    >
       <Carousel
         data={kids}
         width={CARD_WIDTH}
@@ -93,7 +115,7 @@ export default function KidsTab() {
         loop
         onSnapToItem={(idx) => {
           setFocused(idx);
-          Haptics.selectionAsync();              // subtle tick
+          Haptics.selectionAsync(); // subtle tick
         }}
         mode="parallax"
         modeConfig={{
@@ -103,22 +125,19 @@ export default function KidsTab() {
         }}
         renderItem={({ item, index }) => (
           <KidCard
-            data={{ ...item, id: String(item.id) }}
+            data={ item }
             width={CARD_WIDTH}
             isCentered={index === focused}
             onPress={() =>
-              router.push({ pathname: "/kid/[id]", params: { id: String(item.id) } })
+              router.push({
+                pathname: "/kid/[id]",
+                params: { id: item.username },
+              })
             }
           />
         )}
       />
-
-      {/* Pull-to-refresh support */}
-      <RefreshControl refreshing={refreshing} onRefresh={() => {
-        setRefreshing(true);
-        loadKids();
-      }} />
-    </View>
+    </ScrollView> 
   );
 }
 
@@ -130,7 +149,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
   },
