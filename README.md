@@ -108,7 +108,8 @@ This is the React Native / Expo client for the Family Command Center tablet app.
 
 ```bash
 npm install
-npx expo start
+npx expo start for frontend start
+mvn clean compile exec:java for backend start
 
 ## 📝Notes
 
