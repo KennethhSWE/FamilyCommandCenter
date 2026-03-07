@@ -41,9 +41,9 @@ public final class Database {
         cfg.setJdbcUrl (System.getenv().getOrDefault(
                 "FCC_DB_URL", "jdbc:postgresql://localhost:5432/family_command_center"));
         cfg.setUsername(System.getenv().getOrDefault(
-                "FCC_DB_USER", "kenneth"));
+                "FCC_DB_USER", "postgres"));
         cfg.setPassword(System.getenv().getOrDefault(
-                "FCC_DB_PASS", "EllaAustin1"));
+                "FCC_DB_PASS", ""));
 
         cfg.setMaximumPoolSize(10);
         cfg.setPoolName("FamilyCommandCenter-Hikari");

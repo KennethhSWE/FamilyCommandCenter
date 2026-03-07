@@ -234,7 +234,8 @@ public final class App {
         /*
          * ADMIN DAILY ASSIGNMENT
          */
-        api.post("/api/assign/daily", ctx -> new AssignController(userDAO).assignDailyChores());
+        AssignController assignController = new AssignController(userDAO);
+        api.post("/api/assign/daily", ctx -> assignController.assignDailyChores());
 
         /*
          * AUTH GUARDS
