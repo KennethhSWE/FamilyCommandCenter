@@ -8,7 +8,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
- * Centralised PostgreSQL connection-pool (HikariCP).  
+ * Centralized PostgreSQL connection-pool (HikariCP).  
  * All DAOs receive the {@link javax.sql.DataSource} produced here.
  */
 public final class Database {
@@ -31,7 +31,7 @@ public final class Database {
     }
 
     /* ------------------------------------------------------------------
-     *  Internal pool initialisation
+     *  Internal pool initialization
      * ---------------------------------------------------------------- */
     private static HikariDataSource initPool() {
         HikariConfig cfg = new HikariConfig();

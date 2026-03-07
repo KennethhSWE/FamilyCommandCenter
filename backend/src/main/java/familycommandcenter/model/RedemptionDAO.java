@@ -5,7 +5,6 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * DAO for the <code>redemptions</code> table.
@@ -83,74 +82,114 @@ public final class RedemptionDAO {
     }
 
     /**
-     * Approves the pending redemption and deducts points atomically.
+     * Approves the pending redemption and deducts points in the same transaction/ 
      * @return <code>true</code> if approval succeeded.
      */
     public boolean approveRedemption(int redemptionId) throws SQLException {
-
-        /* 1 ─ fetch the redemption (must be pending) */
-        final String selectSql = """
-            SELECT username, reward_id
-              FROM redemptions
-             WHERE id = ?
-               AND status = 'pending'
-             FOR UPDATE
-        """;
-        try (Connection c = ds.getConnection();
-             PreparedStatement select = c.prepareStatement(selectSql)) {
-
-            c.setAutoCommit(false);                     // manual tx
-
-            select.setInt(1, redemptionId);
-            try (ResultSet rs = select.executeQuery()) {
-
-                if (!rs.next()) {                       // nothing pending
-                    c.rollback();
-                    return false;
-                }
-
-                String username = rs.getString(1);
-                int rewardId    = rs.getInt   (2);
-
-                /* 2 ─ load reward & point balance */
-                RewardDAO     rewardDAO = new RewardDAO(ds);
-                PointsBankDAO pointsDAO = new PointsBankDAO(ds);
-
-                Optional<Reward> rewardOpt = rewardDAO.getRewardById(rewardId);
-                if (rewardOpt.isEmpty()) { c.rollback(); return false; }
-
-                int cost    = rewardOpt.get().getCost();
-                int balance = pointsDAO.getPoints(username);
-
-                if (balance < cost) {                   // insufficient funds
-                    c.rollback();
-                    return false;
-                }
-
-                /* 3 ─ deduct points */
-                pointsDAO.deductPoints(username, cost);
-
-                /* 4 ─ mark redemption approved */
-                final String updateSql = """
-                    UPDATE redemptions
-                       SET status      = 'approved',
-                           redeemed_at = CURRENT_TIMESTAMP
-                     WHERE id = ?
+        final String selectRedemptionSql = """
+                SELECT username, reward_id
+                FROM redemptions
+                WHERE id = ?
+                AND status = 'pending'
+                FOR UPDATE
                 """;
-                try (PreparedStatement upd = c.prepareStatement(updateSql)) {
-                    upd.setInt(1, redemptionId);
-                    upd.executeUpdate();
+        final String selectRewardSql = """
+                SELECT cost 
+                FROM rewards
+                WHERE id = ?
+                """;
+        final String selectPointsSql = """
+                SELECT total_points
+                FROM points_bank
+                WHERE user_name = ?
+                FOR UPDATE
+                """;
+        final String deductPointsSql = """
+                UPDATE points_bank
+                SET total_points = total_points - ?
+                WHERE user_name = ?
+                """;
+        final String updateRedemptionSql = """
+                UPDATE redemptions
+                SET status = 'approved',
+                redeemed_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """;
+
+        try (Connection c = ds.getConnection()) {
+            c.setAutoCommit(false);
+
+            try {
+                String username; 
+                int rewardId;
+
+                try (PreparedStatement ps = c.prepareStatement(selectRedemptionSql)) {
+                    ps.setInt(1, redemptionId);
+
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            c.rollback();
+                            return false;
+                        }
+
+                        username = rs.getString("username");
+                        rewardId = rs.getInt("reward_id");
+                    }
                 }
 
-                c.commit();
-                return true;
+                int cost; 
+                try (PreparedStatement ps = c.prepareStatement(selectRewardSql)) {
+                    ps.setInt(1, rewardId);
+
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            c.rollback();
+                            return false;
+                        }
+
+                        cost = rs.getInt("cost");
+                    }
+                }
+
+                int balance; 
+                try (PreparedStatement ps = c.prepareStatement(selectPointsSql)) {
+                    ps.setString(1, username);
+
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            c.rollback();
+                            return false;
+                        }
+                        
+                        balance = rs.getInt("total_points");
+                    }
+                }
+
+                if (balance < cost) {
+                    c.rollback();
+                    return false;
+                }
+
+                try (PreparedStatement ps = c.prepareStatement(deductPointsSql)) {
+                    ps.setInt(1, cost);
+                    ps.setString(2, username);
+                    ps.executeUpdate();
+                }
+
+                try (PreparedStatement ps = c.prepareStatement(updateRedemptionSql)) {
+                    ps.setInt(1, redemptionId);
+                    ps.executeUpdate();
+                }
+
+                c.commit(); 
+                return true; 
             } catch (Exception ex) {
                 c.rollback();
-                throw ex;
+                throw ex; 
             } finally {
                 c.setAutoCommit(true);
             }
-        }
+        }   
     }
 
     /* ────────────────────────── helper mapper ───────────────────────── */

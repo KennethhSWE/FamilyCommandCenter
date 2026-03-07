@@ -62,7 +62,7 @@ public final class RewardDAO {
      * Rewards the kid can currently afford, given their point balance.
      * <p>Relies on <code>points_bank.total_points</code>.</p>
      */
-    public List<Reward> getAffordableRewards(String username, int currentPoints) throws SQLException {
+    public List<Reward> getAffordableRewards(int currentPoints) throws SQLException {
         final String sql = """
             SELECT * FROM rewards
              WHERE cost <= ?
