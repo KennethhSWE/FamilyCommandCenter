@@ -18,10 +18,12 @@ import java.util.Date;
  */
 public final class JwtUtil {
 
-    private static final Dotenv DOTENV = Dotenv.load();
+    private static final Dotenv DOTENV = Dotenv.configure().ignoreIfMissing().load();
     private static final Key SIGNING_KEY = initSigningKey();
 
-    private JwtUtil() {} // utility class – no instances
+    private JwtUtil() {
+        // utility class – no instances
+    } 
 
     /* ------------------------------------------------------------------
      *  Public API
@@ -60,10 +62,14 @@ public final class JwtUtil {
      *  Internal helpers
      * ---------------------------------------------------------------- */
     private static Key initSigningKey() {
-        String secretB64 = DOTENV.get("JWT_SECRET");
+        String secretB64 = System.getenv("JWT_SECRET");
+        if (secretB64 == null || secretB64.isBlank()) {
+            secretB64 = DOTENV.get("JWT_SECRET");
+        }
+
         byte[] secretBytes;
 
-        if (secretB64 == null) {
+        if (secretB64 == null || secretB64.isBlank()) {
             System.err.println("[WARN] JWT_SECRET not found – using runtime random key. "
                              + "Tokens will be invalid after restart.");
             secretBytes = new byte[64];            // 512-bit random dev key

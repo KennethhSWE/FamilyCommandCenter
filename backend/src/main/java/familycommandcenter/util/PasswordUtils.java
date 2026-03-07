@@ -7,7 +7,9 @@ import org.mindrot.jbcrypt.BCrypt;
  */
 public final class PasswordUtils {
 
-    private PasswordUtils() {} // prevent instantiation
+    private PasswordUtils() {
+        // prevent instantiation
+    } 
 
     /**
      * Hashes a plaintext password using BCrypt with a generated salt.
@@ -27,6 +29,9 @@ public final class PasswordUtils {
      * @return true if the password matches, false otherwise
      */
     public static boolean checkPassword(String plainTextPassword, String hashedPassword) {
+        if (plainTextPassword == null || hashedPassword == null) {
+            return false; 
+        }
         return BCrypt.checkpw(plainTextPassword, hashedPassword);
     }
 }

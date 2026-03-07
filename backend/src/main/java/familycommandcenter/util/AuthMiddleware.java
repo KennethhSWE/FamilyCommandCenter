@@ -17,8 +17,13 @@ public class AuthMiddleware implements Handler {
     @Override
     public void handle(Context ctx) throws Exception {
         String hdr = ctx.header("Authorization");
-        if (hdr == null || !hdr.startsWith("Bearer ")) {
-            ctx.status(401).result("Missing token");
+        if (hdr == null) {
+            ctx.status(401).result("Missing Authorization header");
+            return; 
+        }
+        
+        if (!hdr.startsWith("Bearer ")) {
+            ctx.status(401).result("Invalid Authorization format");
             return;
         }
         String token = hdr.substring(7);

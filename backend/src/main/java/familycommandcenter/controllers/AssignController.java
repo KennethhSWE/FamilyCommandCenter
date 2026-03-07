@@ -1,10 +1,6 @@
 package familycommandcenter.controllers;
 
-import familycommandcenter.Database;
 import familycommandcenter.model.*;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Collections;
@@ -19,11 +15,11 @@ import java.util.List;
  */
 public final class AssignController {
 
-    private final UserDAO userDao;
+    private final UserDAO userDAO; 
 
-    public AssignController(UserDAO userDao) {
-        this.userDao = userDao;
-    }
+    public AssignController(UserDAO userDAO) {
+        this.userDAO = userDAO;
+    } 
 
     /** Trigger once each morning (or via POST /api/assign/daily). */
     public void assignDailyChores() {
@@ -32,7 +28,7 @@ public final class AssignController {
 
         List<User> kids;
         try {
-            kids = userDao.getUsersByRole("kid");
+            kids = userDAO.getUsersByRole("kid");
         } catch (SQLException e) {                     // unlikely: connection pool down
             e.printStackTrace();
             return;
@@ -54,7 +50,7 @@ public final class AssignController {
                 int added = 0;
                 for (Chore c : pool) {
                     if (added == 5) break;
-                    if (alreadyAssignedToday(kid.getUsername(), c.getName())) continue;
+                    if (ChoreDataService.isAlreadyAssignedToday(kid.getUsername(), c.getName())) continue;
 
                     c.setAssignedTo(kid.getUsername());
                     c.setDueDate(today.toString());
@@ -66,24 +62,6 @@ public final class AssignController {
             } catch (SQLException e) {
                 e.printStackTrace();                   // continue with next kid
             }
-        }
-    }
-
-    /** Returns {@code true} if {@code username} already has {@code choreName} scheduled for today. */
-    private boolean alreadyAssignedToday(String username, String choreName) throws SQLException {
-        String sql = """
-            SELECT 1 FROM chores
-             WHERE assigned_to = ?
-               AND name         = ?
-               AND due_date     = CURRENT_DATE
-             LIMIT 1
-        """;
-        try (Connection c = Database.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-
-            ps.setString(1, username);
-            ps.setString(2, choreName);
-            return ps.executeQuery().next();
         }
     }
 }

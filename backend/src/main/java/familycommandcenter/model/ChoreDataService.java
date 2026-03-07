@@ -91,6 +91,28 @@ public class ChoreDataService {
         }
     }
 
+    private static boolean isAlreadyAssignedToday(String username, String choreName) throws SQLException {
+        String sql = """
+                SELECT 1 
+                FROM chores
+                WHERE assigned_to = ?
+                AND name = ?
+                AND due_date = CURRENT_DATE
+                LIMIT 1
+                """;
+
+        try (Connection c = Database.getConnection();
+            PreparedStatement ps = c.prepareStatement(sql)) {
+
+                ps.setString(1, username);
+                ps.setString(2, choreName);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next(); 
+                }
+            }
+    }
+
     private static void addChoreToPool(Chore c) throws SQLException {
         String sql = """
                     INSERT INTO chores (name, assigned_to, is_complete, due_date, points,

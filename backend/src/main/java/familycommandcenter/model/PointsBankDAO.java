@@ -17,7 +17,9 @@ public final class PointsBankDAO {
 
     /* ───────────────────────────── queries ───────────────────────────── */
 
-    /** Returns current points for {@code username} or <code>0</code> if no row yet. */
+    /** Returns the user's points. 
+     * If the user doesn't have a row in points_bank, returns 0. 
+    */
     public int getPoints(String username) throws SQLException {
         final String sql = "SELECT total_points FROM points_bank WHERE user_name = ?";
 
