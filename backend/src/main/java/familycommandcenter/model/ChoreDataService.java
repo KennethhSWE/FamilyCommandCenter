@@ -91,7 +91,7 @@ public class ChoreDataService {
         }
     }
 
-    private static boolean isAlreadyAssignedToday(String username, String choreName) throws SQLException {
+    public static boolean isAlreadyAssignedToday(String username, String choreName) throws SQLException {
         String sql = """
                 SELECT 1 
                 FROM chores

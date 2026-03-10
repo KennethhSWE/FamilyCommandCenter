@@ -2,6 +2,7 @@ package familycommandcenter;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import io.github.cdimascio.dotenv.Dotenv;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -13,6 +14,9 @@ import java.sql.SQLException;
  */
 public final class Database {
 
+    private static final Dotenv DOTENV = Dotenv.configure()
+        .ignoreIfMissing()
+        .load();
     private static final HikariDataSource DS = initPool();
 
     private Database() {
@@ -38,12 +42,33 @@ public final class Database {
 
         /* Use env-vars first (safe for prod / CI); fall back to defaults
            so local dev “just works” without extra setup. */
-        cfg.setJdbcUrl (System.getenv().getOrDefault(
-                "FCC_DB_URL", "jdbc:postgresql://localhost:5432/family_command_center"));
-        cfg.setUsername(System.getenv().getOrDefault(
-                "FCC_DB_USER", "postgres"));
-        cfg.setPassword(System.getenv().getOrDefault(
-                "FCC_DB_PASS", ""));
+        String dbUrl = System.getenv("FCC_DB_URL");
+if (dbUrl == null || dbUrl.isBlank()) {
+    dbUrl = DOTENV.get("FCC_DB_URL");
+}
+if (dbUrl == null || dbUrl.isBlank()) {
+    dbUrl = "jdbc:postgresql://localhost:5432/family_command_center";
+}
+
+String dbUser = System.getenv("FCC_DB_USER");
+if (dbUser == null || dbUser.isBlank()) {
+    dbUser = DOTENV.get("FCC_DB_USER");
+}
+if (dbUser == null || dbUser.isBlank()) {
+    dbUser = "postgres";
+}
+
+String dbPass = System.getenv("FCC_DB_PASS");
+if (dbPass == null || dbPass.isBlank()) {
+    dbPass = DOTENV.get("FCC_DB_PASS");
+}
+if (dbPass == null) {
+    dbPass = "";
+}
+
+cfg.setJdbcUrl(dbUrl);
+cfg.setUsername(dbUser);
+cfg.setPassword(dbPass);
 
         cfg.setMaximumPoolSize(10);
         cfg.setPoolName("FamilyCommandCenter-Hikari");
