@@ -1,41 +1,31 @@
-// frontend/app/components/SplashAnimation.tsx
-//--------------------------------------------------------------
-//  Simple splash + fade-in logo
-//  onFinish() fires after `DURATION_MS` so the caller can redirect
-//--------------------------------------------------------------
 import React, { useEffect, useRef } from "react";
-import {
-  Animated,
-  Easing,
-  Image,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Animated, Easing, Image, StyleSheet, Text, View } from "react-native";
 
-const DURATION_MS = 2000;          // total splash time
+const DURATION_MS = 2000;
 
-/* ------------ props ------------ */
 interface SplashAnimationProps {
-  onFinish: () => void;            // required callback
+  onFinish: () => void;
 }
 
-/* ------------ component ------------ */
 export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // fade-in animation
-    Animated.timing(opacity, {
+    const animation = Animated.timing(opacity, {
       toValue: 1,
       duration: 900,
       easing: Easing.out(Easing.exp),
       useNativeDriver: true,
-    }).start(() => {
-      // hold for a moment, then exit
-      const t = setTimeout(onFinish, DURATION_MS - 900);
-      return () => clearTimeout(t);
     });
+
+    const timeout = setTimeout(onFinish, DURATION_MS);
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+      clearTimeout(timeout);
+    };
   }, [opacity, onFinish]);
 
   return (
@@ -52,7 +42,6 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
   );
 }
 
-/* ------------ styles ------------ */
 const styles = StyleSheet.create({
   container: {
     flex: 1,

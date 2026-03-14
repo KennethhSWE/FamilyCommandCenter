@@ -19,14 +19,14 @@ import {
   Dimensions,
 } from "react-native";
 import { router } from "expo-router";
+
+import { api, getKidsByHousehold } from "../src/lib/api";
 import {
   saveToken,
   saveHouseholdId,
   getToken,
   getHouseholdId,
 } from "../src/lib/auth";
-
-import { getKidsByHousehold } from "src/lib/api";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -37,27 +37,39 @@ export default function RegisterScreen() {
   const scheme = useColorScheme();
 
   useEffect(() => {
-  (async () => {
-    const token = await getToken();
-    const householdId = await getHouseholdId();
+    let isMounted = true;
 
-    if (token && householdId) {
-      try {
-        const kids = await getKidsByHousehold(householdId);
+    (async () => {
+      const token = await getToken();
+      const householdId = await getHouseholdId();
 
-        if (kids.length > 0) {
-          router.replace("/(tabs)/kids");
-        } else {
-          router.replace("/onboarding/AddKidsScreen");
-        }
-      } catch (e) {
-        // If the API call fails for any reason, don't loop—stay on register
-        console.error("Startup kids check failed:", e);
+      if (!isMounted) {
+        return;
       }
-    }
-  })();
-}, []);
 
+      if (token && householdId) {
+        try {
+          const kids = await getKidsByHousehold(householdId);
+
+          if (!isMounted) {
+            return;
+          }
+
+          if (kids.length > 0) {
+            router.replace("/(tabs)/kids");
+          } else {
+            router.replace("/onboarding/AddKidsScreen");
+          }
+        } catch (e) {
+          console.error("Startup kids check failed:", e);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleRegister = async () => {
     if (adminName.trim() === "" || pin.length !== 4) {
@@ -66,34 +78,39 @@ export default function RegisterScreen() {
     }
 
     setLoading(true);
+
     try {
-      const res = await fetch("http://10.0.2.2:7070/api/household", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminName, pin }),
-      });
+      const res = await api.post<{ token: string; householdId: string }>(
+        "/household",
+        {
+          adminName,
+          pin,
+        },
+      );
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const { token, householdId } = await res.json();
-      await saveToken(token);
-      await saveHouseholdId(householdId);
+      await saveToken(res.data.token);
+      await saveHouseholdId(res.data.householdId);
 
       router.replace("/onboarding/AddKidsScreen");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Registration error:", err);
-      Alert.alert("Error", "Failed to register. Please try again.");
+      Alert.alert(
+        "Error",
+        err?.response?.data ?? "Failed to register. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  let [fontsLoaded] = useFonts({
+  const [fontsLoaded] = useFonts({
     Poppins_600SemiBold,
     Poppins_400Regular,
   });
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded) {
+    return null;
+  }
 
   const colors =
     scheme === "dark"
@@ -133,6 +150,7 @@ export default function RegisterScreen() {
           source={require("../app/assets/images/icon.png")}
           style={styles.logo}
         />
+
         <Text style={[styles.title, { color: colors.text }]}>
           🎉 Welcome to the Family Command Center
         </Text>
@@ -233,7 +251,7 @@ const styles = StyleSheet.create({
     lineHeight: 36,
   },
   form: {
-    width: "90%", // maintain nice spacing
+    width: "90%",
   },
   label: {
     fontFamily: "Poppins_400Regular",

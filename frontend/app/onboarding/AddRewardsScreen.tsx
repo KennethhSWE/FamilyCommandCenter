@@ -19,40 +19,40 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import { router } from "expo-router";
 
-import { createRewardBulk }   from "../../src/lib/api";   // ✅ bulk API
-import { getHouseholdId }      from "../../src/lib/auth";  // ✅ HH id
+import { createRewardBulk } from "../../src/lib/api";
+import { getHouseholdId } from "../../src/lib/auth";
 
 import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
 /* ───────────────────── types ───────────────────── */
 interface LocalReward {
-  id:   string;
+  id: string;
   name: string;
   cost: number;
 }
 
 /* ─────────── default starter rewards ─────────── */
 const starterRewards: LocalReward[] = [
-  { id: "1", name: "Ice-cream treat",    cost: 25  },
-  { id: "2", name: "30 min screen time", cost: 40  },
-  { id: "3", name: "Trip to the park",   cost: 60  },
-  { id: "4", name: "Buy a new toy",      cost: 100 },
+  { id: "1", name: "Ice-cream treat", cost: 25 },
+  { id: "2", name: "30 min screen time", cost: 40 },
+  { id: "3", name: "Trip to the park", cost: 60 },
+  { id: "4", name: "Buy a new toy", cost: 100 },
 ];
 
 export default function AddRewardsScreen() {
   const [rewards, setRewards] = useState<LocalReward[]>(starterRewards);
-  const [name,    setName ]   = useState("");
-  const [cost,    setCost ]   = useState("25");
+  const [name, setName] = useState("");
+  const [cost, setCost] = useState("25");
 
   /* ─────────── colour palette (dark / light) ─────────── */
   const isDark = useColorScheme() === "dark";
   const c = {
-    bg:      isDark ? "#000" : "#FFF",
-    text:    isDark ? "#FFF" : "#000",
-    border:  isDark ? "#555" : "#CCC",
-    card:    isDark ? "#111" : "#F7F7F7",
-    btn:     "#4CAF50",
+    bg: isDark ? "#000" : "#FFF",
+    text: isDark ? "#FFF" : "#000",
+    border: isDark ? "#555" : "#CCC",
+    card: isDark ? "#111" : "#F7F7F7",
+    btn: "#4CAF50",
     btnText: "#FFF",
   };
 
@@ -74,15 +74,23 @@ export default function AddRewardsScreen() {
   /* ─────── save to backend & advance ─────── */
   const handleNext = async () => {
     try {
-      const householdId = await getHouseholdId();           // must exist
+      const householdId = await getHouseholdId();
+
+      if (!householdId) {
+        Alert.alert("Error", "Missing household. Please register again.");
+        router.replace("/register");
+        return;
+      }
+
       await createRewardBulk(
-        householdId!,
-        rewards.map(r => ({
-          name:              r.name,
-          cost:              r.cost,
-          requiresApproval:  false,
-        }))
+        householdId,
+        rewards.map((r) => ({
+          name: r.name,
+          cost: r.cost,
+          requiresApproval: false,
+        })),
       );
+
       router.push("/onboarding/AddChoresScreen");
     } catch (err) {
       console.error("Save rewards failed:", err);
@@ -123,10 +131,7 @@ export default function AddRewardsScreen() {
             placeholderTextColor="#888"
             value={name}
             onChangeText={setName}
-            style={[
-              styles.input,
-              { borderColor: c.border, color: c.text },
-            ]}
+            style={[styles.input, { borderColor: c.border, color: c.text }]}
           />
           <Picker
             selectedValue={cost}
@@ -167,14 +172,33 @@ export default function AddRewardsScreen() {
 /* ───────────────────── styles ───────────────────── */
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24 },
-  title:     { fontSize: 26, fontWeight: "bold", marginBottom: 16, textAlign: "center" },
-  rewardItem:{ flexDirection: "row", justifyContent: "space-between",
-               paddingVertical: 10, paddingHorizontal: 12,
-               borderRadius: 6, marginVertical: 4 },
-  rewardText:{ fontSize: 18 },
-  input:     { borderWidth: 1.5, borderRadius: 8, padding: 12,
-               fontSize: 18, marginTop: 16 },
-  button:    { marginTop: 16, paddingVertical: 14, borderRadius: 10,
-               alignItems: "center" },
-  buttonText:{ fontSize: 16, fontWeight: "bold" },
+  title: {
+    fontSize: 26,
+    fontWeight: "bold",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  rewardItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    marginVertical: 4,
+  },
+  rewardText: { fontSize: 18 },
+  input: {
+    borderWidth: 1.5,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 18,
+    marginTop: 16,
+  },
+  button: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  buttonText: { fontSize: 16, fontWeight: "bold" },
 });

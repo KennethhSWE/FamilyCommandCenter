@@ -1,23 +1,16 @@
-// frontend/app/index.tsx
-//--------------------------------------------------------------
-//  Entry point – decide where to go, show splash meanwhile
-//--------------------------------------------------------------
-import { Redirect }         from "expo-router";
-import { useEffect, useState } from "react";
+import { Redirect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 
 import { getToken, getHouseholdId } from "../src/lib/auth";
-import SplashAnimation      from "./components/SplashAnimation";
-import 'react-native-get-random-values';
+import SplashAnimation from "./components/SplashAnimation";
+import "react-native-get-random-values";
 
-/* ───────────────────────── types ───────────────────────── */
 type Dest = "/(tabs)/kids" | "/register";
 
-/* ───────────────────────── component ───────────────────────── */
 export default function Index() {
-  const [dest,   setDest]   = useState<Dest | null>(null); // where to redirect
-  const [ready,  setReady]  = useState(false);             // splash finished
+  const [dest, setDest] = useState<Dest | null>(null);
+  const [ready, setReady] = useState(false);
 
-  /* 1 ▸ auth / onboarding check (runs once) */
   useEffect(() => {
     (async () => {
       try {
@@ -25,6 +18,7 @@ export default function Index() {
           getToken(),
           getHouseholdId(),
         ]);
+
         setDest(token && householdId ? "/(tabs)/kids" : "/register");
       } catch (err) {
         console.error("Startup check failed:", err);
@@ -33,11 +27,13 @@ export default function Index() {
     })();
   }, []);
 
-  /* 2 ▸ still loading ⟶ keep splash */
+  const handleSplashFinish = useCallback(() => {
+    setReady(true);
+  }, []);
+
   if (!ready || dest === null) {
-    return <SplashAnimation onFinish={() => setReady(true)} />;
+    return <SplashAnimation onFinish={handleSplashFinish} />;
   }
 
-  /* 3 ▸ auth check done + splash done ⟶ redirect */
   return <Redirect href={dest} />;
 }

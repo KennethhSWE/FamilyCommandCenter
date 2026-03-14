@@ -10,15 +10,15 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle } from "react-native-svg";
 import * as Haptics from "expo-haptics";
-import axios from "axios";
-import { DarkTheme } from "@react-navigation/native";
+
+import { getPoints } from "../../src/lib/api";
 
 export interface Kid {
   username: string;
   name: string;
   role: "kid" | "parent";
   age?: number;
-  avatar?: string; // Optional avatar URL
+  avatar?: string;
 }
 
 interface KidCardProps {
@@ -28,34 +28,37 @@ interface KidCardProps {
   isCentered?: boolean;
 }
 
-const MAX_POINTS = 100; // make this dynamic later
+const MAX_POINTS = 100;
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function KidCard({
   data,
   width,
   onPress,
-  isCentered = false } : KidCardProps) {
+  isCentered = false,
+}: KidCardProps) {
   const [points, setPoints] = useState<number>(0);
   const progressAnim = useState(new Animated.Value(0))[0];
 
-  const avatarUri = data.avatar || 'https://ui-avatars.com/api/?background = F5F5F5&color=111&name=${encodeURIComponent(data.name || data.username || "Kid")}';
-
+  const avatarUri =
+    data.avatar ||
+    `https://ui-avatars.com/api/?background=F5F5F5&color=111&name=${encodeURIComponent(
+      data.name || data.username || "Kid",
+    )}`;
 
   useEffect(() => {
-    console.log("KidCard data:", data);
-    if (!data.username || data.username === "none") return;
+    if (!data.username || data.username === "none") {
+      setPoints(0);
+      progressAnim.setValue(0);
+      return;
+    }
 
     const fetchPoints = async () => {
       try {
-        const res = await axios.get(
-          `http://192.168.1.122:7070/api/points/${data.username}`
-        );
-        const fetchedPoints = res.data.total_points || 0;
+        const fetchedPoints = await getPoints(data.username);
         setPoints(fetchedPoints);
-        console.log("Fetched points from backend:", fetchedPoints);
 
-
-        // Animate progress ring
         Animated.timing(progressAnim, {
           toValue: fetchedPoints / MAX_POINTS,
           duration: 1000,
@@ -67,11 +70,12 @@ export default function KidCard({
     };
 
     fetchPoints();
-  }, [data.username]);
+  }, [data.username, progressAnim]);
 
   const radius = 60;
   const strokeWidth = 6;
   const circumference = 2 * Math.PI * radius;
+
   const strokeDashoffset = progressAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [circumference, 0],
@@ -95,7 +99,6 @@ export default function KidCard({
         style={[styles.card, isCentered && styles.cardFocused]}
       >
         <View style={styles.avatarWrapper}>
-          {/* Progress Ring */}
           <Svg width={radius * 2 + 8} height={radius * 2 + 8}>
             <Circle
               stroke="#eee"
@@ -118,27 +121,17 @@ export default function KidCard({
             />
           </Svg>
 
-          {/* Avatar */}
-          {data.avatar ? (
-            <Image source={{ uri: data.avatar }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.placeholder]} />
-          )}
+          <Image source={{ uri: avatarUri }} style={styles.avatar} />
         </View>
 
-        {/* Name and Points */}
         <Text style={styles.name}>{data.name}</Text>
         <Text style={styles.points}>{points} pts</Text>
 
-        {/* Admin Badge */}
         {data.role === "parent" && <Text style={styles.adminBadge}>Admin</Text>}
       </LinearGradient>
     </TouchableOpacity>
   );
 }
-
-// AnimatedCircle wrapper
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const styles = StyleSheet.create({
   card: {
@@ -171,9 +164,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-  },
-  placeholder: {
-    backgroundColor: "#ccc",
   },
   name: {
     fontSize: 22,

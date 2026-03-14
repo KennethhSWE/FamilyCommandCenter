@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,10 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
-import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
 import { router } from "expo-router";
-import { getHouseholdId, getToken } from "../../src/lib/auth";
-import { getKidsByHousehold } from "../../src/lib/api";
+import { getHouseholdId } from "../../src/lib/auth";
+import { createChoreBulk, getKidsByHousehold } from "../../src/lib/api";
 
 interface Chore {
   name: string;
@@ -28,45 +27,49 @@ interface Chore {
   createdBy: number | null;
 }
 
-export default function AddChoresScreen() {
-  const [chores, setChores] = useState<Chore[]>([
-    {
-      name: "",
-      assignedTo: "",
-      points: "",
-      dueDate: null,
-      complete: false,
-      requestedComplete: false,
-      verified: false,
-      recurring: false,
-      minAge: null,
-      maxAge: null,
-      createdBy: null,
-    },
-  ]);
+const emptyChore = (): Chore => ({
+  name: "",
+  assignedTo: "",
+  points: "",
+  dueDate: null,
+  complete: false,
+  requestedComplete: false,
+  verified: false,
+  recurring: false,
+  minAge: null,
+  maxAge: null,
+  createdBy: null,
+});
 
-  const [kids, setkids] = useState<string[]>([]);
+export default function AddChoresScreen() {
+  const [chores, setChores] = useState<Chore[]>([emptyChore()]);
+  const [kids, setKids] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchKids = async () => {
       try {
         const householdId = await getHouseholdId();
-        if (!householdId) throw new Error("No householdId in storage");
+        console.log("Household ID from storage:", householdId);
+
+        if (!householdId) {
+          throw new Error("No householdId in storage");
+        }
 
         const kids = await getKidsByHousehold(householdId);
-        setkids(kids.map((k) => k.name));
+        setKids(kids.map((k) => k.name));
       } catch (error) {
-        console.error("Error Fetching kids:", error);
-        setkids([]);
+        console.error("Error fetching kids:", error);
+        setKids([]);
       }
     };
+
     fetchKids();
   }, []);
 
   const updateChore = <K extends keyof Chore>(
     index: number,
     field: K,
-    value: Chore[K]
+    value: Chore[K],
   ) => {
     const updated = [...chores];
     updated[index][field] = value;
@@ -74,58 +77,36 @@ export default function AddChoresScreen() {
   };
 
   const addChoreRow = () => {
-    setChores([
-      ...chores,
-      {
-        name: "",
-        assignedTo: "",
-        points: "",
-        dueDate: null,
-        complete: false,
-        requestedComplete: false,
-        verified: false,
-        recurring: false,
-        minAge: null,
-        maxAge: null,
-        createdBy: null,
-      },
-    ]);
+    setChores([...chores, emptyChore()]);
   };
 
   const removeChoreRow = (index: number) => {
     const updated = chores.filter((_, i) => i !== index);
-    setChores(updated);
+    setChores(updated.length ? updated : [emptyChore()]);
   };
 
   const submitChores = async () => {
     try {
-      const token = await getToken();
-      if (!token) throw new Error("No token in storage");
-
-      // optional: filter out empty rows so backend doesn't store blanks
       const cleaned = chores
         .filter((c) => c.name.trim() && c.assignedTo.trim())
         .map((c) => ({
           ...c,
+          dueDate: c.dueDate ?? undefined,
           points:
             typeof c.points === "string"
               ? parseInt(c.points, 10) || 0
               : c.points,
         }));
 
-      const res = await axios.post(
-        "http://10.0.2.2:7070/api/chores/bulk",
-        cleaned,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          timeout: 10000,
-        }
-      );
+      if (cleaned.length === 0) {
+        Alert.alert(
+          "No chores added",
+          "Please add at least one chore before continuing.",
+        );
+        return;
+      }
 
-      console.log("Chores submit OK:", res.status, res.data);
+      await createChoreBulk(cleaned);
       router.replace("/(tabs)/kids");
     } catch (error: any) {
       const msg =
@@ -139,7 +120,40 @@ export default function AddChoresScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* your UI here */}
+      <Text style={styles.header}>Add Chores</Text>
+
+      {chores.map((chore, index) => (
+        <View key={index} style={styles.card}>
+          <TextInput
+            style={styles.input}
+            placeholder="Chore name"
+            value={chore.name}
+            onChangeText={(text) => updateChore(index, "name", text)}
+          />
+
+          <Picker
+            selectedValue={chore.assignedTo}
+            onValueChange={(value) => updateChore(index, "assignedTo", value)}
+          >
+            <Picker.Item label="Select a kid" value="" />
+            {kids.map((kid) => (
+              <Picker.Item key={kid} label={kid} value={kid} />
+            ))}
+          </Picker>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Points"
+            keyboardType="number-pad"
+            value={String(chore.points)}
+            onChangeText={(text) => updateChore(index, "points", text)}
+          />
+
+          <Button title="Remove Chore" onPress={() => removeChoreRow(index)} />
+        </View>
+      ))}
+
+      <Button title="Add Another Chore" onPress={addChoreRow} />
       <Button title="Submit Chores" onPress={submitChores} />
     </ScrollView>
   );

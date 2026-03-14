@@ -1,68 +1,72 @@
-package familycommandcenter.routes; 
+package familycommandcenter.routes;
 
-import com.fasterxml.jackson.core.type.TypeReference; 
-import com.fasterxml.jackson.databind.ObjectMapper; 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import familycommandcenter.model.PointsBankDAO;
-import familycommandcenter.model.User; 
-import familycommandcenter.model.UserDAO; 
+import familycommandcenter.model.User;
+import familycommandcenter.model.UserDAO;
 import familycommandcenter.util.JwtUtil;
-import familycommandcenter.util.PasswordUtils; 
-import io.javalin.Javalin; 
+import familycommandcenter.util.PasswordUtils;
+import io.javalin.Javalin;
 
-import java.time.LocalDateTime; 
-import java.util.List; 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional; 
+import java.util.Optional;
 import java.util.UUID;
 
-
 public final class AuthRoutes {
-    
+
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private AuthRoutes() {
-        //Utility Class
+        // Utility Class
     }
 
     public static void register(Javalin api, UserDAO userDAO, PointsBankDAO pointsDAO) {
         api.post("/api/household", ctx -> {
-            record Req(String adminName, String pin) {}
+            record Req(String adminName, String pin) {
+            }
 
             Req req = JSON.readValue(ctx.body(), Req.class);
 
             if (req.adminName() == null || req.adminName().isBlank()
-        || req.pin() == null || req.pin().length() != 4) {
-    ctx.status(400).result("Parent name & 4-digit PIN required");
-    return;
-}
+                    || req.pin() == null || req.pin().length() != 4) {
+                ctx.status(400).result("Parent name & 4-digit PIN required");
+                return;
+            }
+
+            if (userDAO.findByUsername(req.adminName()).isPresent()) {
+                ctx.status(409).result("That name is already taken");
+                return;
+            }
 
             UUID householdId = UUID.randomUUID();
-                    
+
             userDAO.save(new User(
-                0, 
-                req.adminName(), 
-                PasswordUtils.hashPassword(req.pin()),
-                LocalDateTime.now(), 
-                0, 
-                "parent",
-                householdId
-            ));
+                    0,
+                    req.adminName(),
+                    PasswordUtils.hashPassword(req.pin()),
+                    LocalDateTime.now(),
+                    0,
+                    "parent",
+                    householdId));
 
             String jwt = JwtUtil.generateToken(req.adminName(), "parent");
             ctx.json(Map.of(
-                "token", jwt, 
-                "householdId", householdId.toString()
-            ));
+                    "token", jwt,
+                    "householdId", householdId.toString()));
         });
 
         api.post("/api/login", ctx -> {
-            Map<String, String>body = JSON.readValue(ctx.body(), new TypeReference<>() {});
+            Map<String, String> body = JSON.readValue(ctx.body(), new TypeReference<>() {
+            });
             String username = body.get("username");
             String pin = body.get("pin");
 
             if (username == null || pin == null) {
                 ctx.status(400).result("Username and PIN required");
-                return; 
+                return;
             }
 
             Optional<User> user = userDAO.findByUsername(username);
@@ -75,8 +79,10 @@ public final class AuthRoutes {
         });
 
         api.post("/api/household/kids", ctx -> {
-            record KidPayload(String name, int age) {}
-            record Req(UUID householdId, List<KidPayload> kids) {}
+            record KidPayload(String name, int age) {
+            }
+            record Req(UUID householdId, List<KidPayload> kids) {
+            }
 
             Req req = JSON.readValue(ctx.body(), Req.class);
 
@@ -84,14 +90,13 @@ public final class AuthRoutes {
                 String hashedPin = PasswordUtils.hashPassword("0000");
 
                 userDAO.save(new User(
-                    0, 
-                    k.name(), 
-                    hashedPin, 
-                    LocalDateTime.now(), 
-                    k.age(), 
-                    "kid",
-                    req.householdId()
-                ));
+                        0,
+                        k.name(),
+                        hashedPin,
+                        LocalDateTime.now(),
+                        k.age(),
+                        "kid",
+                        req.householdId()));
 
                 pointsDAO.addPoints(k.name(), 0);
             }
@@ -100,8 +105,23 @@ public final class AuthRoutes {
         });
 
         api.get("/api/kids/{hh}", ctx -> {
-            UUID hh = UUID.fromString(ctx.pathParam("hh"));
-            ctx.json(userDAO.getKidsByHousehold(hh));
+            String rawHouseholdId = ctx.pathParam("hh");
+            System.out.println("GET /api/kids/{hh} called with: " + rawHouseholdId);
+
+            try {
+                UUID hh = UUID.fromString(rawHouseholdId);
+                var kids = userDAO.getKidsByHousehold(hh);
+                System.out.println("Kids found: " + kids.size());
+                ctx.json(kids);
+            } catch (IllegalArgumentException e) {
+                System.err.println("Invalid household ID: " + rawHouseholdId);
+                e.printStackTrace();
+                ctx.status(400).result("Invalid household ID");
+            } catch (Exception e) {
+                System.err.println("Failed loading kids for household: " + rawHouseholdId);
+                e.printStackTrace();
+                ctx.status(500).result("Failed to load kids");
+            }
         });
     }
 }

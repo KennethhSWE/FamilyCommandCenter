@@ -1,7 +1,3 @@
-// frontend/app/onboarding/AddKidsScreen.tsx
-//--------------------------------------------------------------
-//  On-boarding step • Collect kids’ names + ages
-//--------------------------------------------------------------
 import React, { useState } from "react";
 import {
   View,
@@ -14,8 +10,10 @@ import {
   useColorScheme,
 } from "react-native";
 import { router } from "expo-router";
-import { getToken, getHouseholdId } from "../../src/lib/auth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { api } from "../../src/lib/api";
+import { getHouseholdId } from "../../src/lib/auth";
 
 interface Kid {
   name: string;
@@ -33,44 +31,59 @@ export default function AddKidsScreen() {
   const [kids, setKids] = useState<Kid[]>([]);
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
+
   const cleanedName = name.trim();
+
   const dup = kids.some(
-    (k) => k.name.toLowerCase() === cleanedName.toLowerCase()
+    (k) => k.name.toLowerCase() === cleanedName.toLowerCase(),
   );
+
   const canAdd =
     cleanedName !== "" && age !== "" && !dup && +age > 0 && +age <= 17;
 
-  /* ---------------------------------------------------------- */
   const addKid = () => {
-    if (!canAdd) return;
+    if (!canAdd) {
+      return;
+    }
+
     setKids([...kids, { name: cleanedName, age: +age }]);
     setName("");
     setAge("");
   };
 
   const saveKids = async () => {
+    if (kids.length === 0) {
+      Alert.alert(
+        "No kids added",
+        "Please add at least one kid before continuing.",
+      );
+      return;
+    }
+
     try {
-      const [token, householdId] = await Promise.all([
-        getToken(),
-        getHouseholdId(),
-      ]);
-      const res = await fetch("http://10.0.2.2:7070/api/household/kids", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ householdId, kids }),
+      const householdId = await getHouseholdId();
+
+      if (!householdId) {
+        Alert.alert("Missing household", "Please register again.");
+        router.replace("/register");
+        return;
+      }
+
+      await api.post("/household/kids", {
+        householdId,
+        kids,
       });
-      if (!res.ok) throw new Error(await res.text());
+
       router.replace("/onboarding/AddRewardsScreen");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save kids:", err);
-      Alert.alert("Error", "Could not save kids. Try again.");
+      Alert.alert(
+        "Error",
+        err?.response?.data ?? "Could not save kids. Try again.",
+      );
     }
   };
 
-  /* ------------------------------ UI ------------------------------ */
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <Text style={[styles.title, { color: colors.text }]}>Add Your Kids</Text>
@@ -85,6 +98,7 @@ export default function AddKidsScreen() {
         value={name}
         onChangeText={setName}
       />
+
       <TextInput
         placeholder="Age (1–17)"
         placeholderTextColor="#888"
@@ -98,7 +112,6 @@ export default function AddKidsScreen() {
         maxLength={2}
       />
 
-      {/* duplicate warning */}
       {dup && (
         <Text style={styles.warn}>
           That name is already in your list – choose a nickname?
@@ -132,7 +145,6 @@ export default function AddKidsScreen() {
   );
 }
 
-/* ---------------------------- styles ---------------------------- */
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, justifyContent: "center" },
   title: {

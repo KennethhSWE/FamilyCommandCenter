@@ -17,7 +17,8 @@ import { getChoresByKid, completeChore, Chore } from "../../src/lib/api";
 
 export default function KidChoresScreen() {
   // Carousel passes ?id=<username>
-  const { id: username } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const username = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [chores, setChores] = useState<Chore[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,13 +40,17 @@ export default function KidChoresScreen() {
 
   const onComplete = async (id: number) => {
     // optimistic update
-    setChores(prev => prev.map(c => (c.id === id ? { ...c, complete: true } : c)));
+    setChores((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, complete: true } : c)),
+    );
     try {
       await completeChore(id);
     } catch (e) {
       // rollback if it failed
       console.error("Complete failed:", e);
-      setChores(prev => prev.map(c => (c.id === id ? { ...c, complete: false } : c)));
+      setChores((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, complete: false } : c)),
+      );
     }
   };
 
@@ -78,20 +83,12 @@ export default function KidChoresScreen() {
         >
           <View style={styles.left}>
             <Text
-              style={[
-                styles.name,
-                item.overdue && styles.nameOverdue,
-              ]}
+              style={[styles.name, item.overdue && styles.nameOverdue]}
               numberOfLines={2}
             >
               {item.name}
             </Text>
-            <Text
-              style={[
-                styles.points,
-                item.overdue && styles.nameOverdue,
-              ]}
-            >
+            <Text style={[styles.points, item.overdue && styles.nameOverdue]}>
               {item.points} pts
             </Text>
           </View>
