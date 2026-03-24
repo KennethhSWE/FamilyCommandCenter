@@ -1,5 +1,7 @@
 package familycommandcenter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import familycommandcenter.controllers.AssignController;
 import familycommandcenter.model.PointsBankDAO;
 import familycommandcenter.model.RedemptionDAO;
@@ -11,10 +13,10 @@ import familycommandcenter.routes.RewardRoutes;
 import familycommandcenter.routes.UserRoutes;
 import familycommandcenter.util.AuthMiddleware;
 import io.javalin.Javalin;
+import io.javalin.json.JavalinJackson;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
-
 
 public final class App {
 
@@ -27,9 +29,13 @@ public final class App {
         RedemptionDAO redemptionDAO = new RedemptionDAO(ds);
         AssignController assignController = new AssignController(userDAO);
 
-        Javalin api = Javalin.create(config ->
-                config.plugins.enableCors(cors -> cors.add(it -> it.anyHost()))
-        ).start(7070);
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+
+        Javalin api = Javalin.create(config -> {
+            config.plugins.enableCors(cors -> cors.add(it -> it.anyHost()));
+            config.jsonMapper(new JavalinJackson(mapper));
+        }).start(7070);
 
         System.out.println("Javalin listening on :7070");
 
@@ -38,14 +44,8 @@ public final class App {
         RewardRoutes.register(api, rewardDAO, pointsDAO, redemptionDAO);
         UserRoutes.register(api, userDAO);
 
-        /*
-         * ADMIN DAILY ASSIGNMENT
-         */
         api.post("/api/assign/daily", ctx -> assignController.assignDailyChores());
 
-        /*
-         * AUTH GUARDS
-         */
         api.before("/api/chores/*", new AuthMiddleware());
         api.before("/api/rewards/*", new AuthMiddleware());
         api.before("/api/points/*", new AuthMiddleware());
