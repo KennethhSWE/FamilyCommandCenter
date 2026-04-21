@@ -43,7 +43,7 @@ family-command-center/
 
 ```bash
 cd backend
-./mvnw spring-boot:run
+./gradlew run
 ```
 
 Make sure PostgreSQL is running and `application.properties` is configured.
@@ -114,3 +114,4 @@ npx expo start
 
 - Designed for 7" Amazon Fire Tablets
 - Uses custom tab bar, SVG icons, and Harry Potter–themed points screen
+```
