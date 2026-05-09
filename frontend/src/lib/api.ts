@@ -45,6 +45,25 @@ export interface Reward {
   requiresApproval: boolean;
 }
 
+export interface ParentNotification {
+  id: number;
+  type:
+    | "CHORE_APPROVAL_NEEDED"
+    | "REWARD_APPROVAL_NEEDED"
+    | "REWARD_SUGGESTION_CREATED"
+    | "UNEVEN_TRADE_APPROVAL_NEEDED"
+    | "BILL_DUE_SOON";
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+  readAt?: string | null;
+}
+
+export interface NotificationCount {
+  unreadCount: number;
+}
+
 export interface ApprovalQueueItem {
   id: number;
   approvalType:
@@ -201,8 +220,27 @@ export const getPoints = async (username: string): Promise<number> => {
 };
 
 /* ===================================================================
-   Rewards & Points
+   Notifications
    =================================================================== */
+export const getUnreadNotifications = () =>
+  unwrap<ParentNotification[]>(api.get("/notifications/unread"));
+
+export const getRecentNotifications = () =>
+  unwrap<ParentNotification[]>(api.get("/notifications/recent"));
+
+export const getUnreadNotificationCount = () =>
+  unwrap<NotificationCount>(api.get("/notifications/unread-count"));
+
+export const markNotificationRead = (notificationId: number) =>
+  unwrap(api.patch(`/notifications/${notificationId}/read`));
+
+export const markAllNotificationsRead = () =>
+  unwrap(api.patch("/notifications/read-all"));
+
+/* ===================================================================
+   Approvals 
+   =================================================================== */
+
 export const getWaitingApprovals = () =>
   unwrap<ApprovalQueueItem[]>(api.get("/approvals/waiting"));
 

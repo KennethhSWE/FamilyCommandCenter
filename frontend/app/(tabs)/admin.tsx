@@ -120,7 +120,7 @@ export default function AdminScreen() {
       setMinAge("");
       setMaxAge("");
       setIsRecurring(false);
-      loadPendingChores();
+      loadApprovalQueue();
     } catch (error) {
       console.error("add chore:", error);
       Alert.alert("Error", "Could not create new chore.");

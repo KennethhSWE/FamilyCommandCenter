@@ -2,23 +2,24 @@ package familycommandcenter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import familycommandcenter.approvals.ApprovalQueueRepository;
+import familycommandcenter.approvals.ApprovalQueueService;
 import familycommandcenter.chores.ChoreRepository;
 import familycommandcenter.chores.ChoreService;
 import familycommandcenter.chores.DailyChoreService;
-import familycommandcenter.points.PointsService;
-import familycommandcenter.chores.ChoreRepository;
-import familycommandcenter.chores.ChoreService;
 import familycommandcenter.model.PointsBankDAO;
-import familycommandcenter.approvals.ApprovalQueueRepository;
-import familycommandcenter.approvals.ApprovalQueueService;
-import familycommandcenter.routes.ApprovalQueueRoutes;
+import familycommandcenter.model.UserDAO;
+import familycommandcenter.notifications.NotificationRepository;
+import familycommandcenter.notifications.NotificationService;
+import familycommandcenter.points.PointsService;
 import familycommandcenter.rewards.RewardRepository;
 import familycommandcenter.rewards.RewardRedemptionRepository;
 import familycommandcenter.rewards.RewardService;
-import familycommandcenter.routes.PointsRoutes;
-import familycommandcenter.model.UserDAO;
+import familycommandcenter.routes.ApprovalQueueRoutes;
 import familycommandcenter.routes.AuthRoutes;
 import familycommandcenter.routes.ChoreRoutes;
+import familycommandcenter.routes.NotificationRoutes;
+import familycommandcenter.routes.PointsRoutes;
 import familycommandcenter.routes.RewardRoutes;
 import familycommandcenter.routes.UserRoutes;
 import familycommandcenter.util.AuthMiddleware;
@@ -38,8 +39,14 @@ public final class App {
 
         PointsService pointsService = new PointsService(pointsDAO);
 
+        NotificationRepository notificationRepository = new NotificationRepository(ds);
+        NotificationService notificationService = new NotificationService(notificationRepository);
+        notificationService.makeSureTableExists();
+
         ApprovalQueueRepository approvalQueueRepository = new ApprovalQueueRepository(ds);
-        ApprovalQueueService approvalQueueService = new ApprovalQueueService(approvalQueueRepository);
+        ApprovalQueueService approvalQueueService = new ApprovalQueueService(
+                approvalQueueRepository,
+                notificationService);
         approvalQueueService.makeSureTableExists();
 
         ChoreRepository choreRepository = new ChoreRepository(ds);
@@ -73,19 +80,21 @@ public final class App {
         AuthRoutes.register(api, userDAO, pointsDAO);
         ChoreRoutes.register(api, choreService);
         RewardRoutes.register(api, rewardService);
-        PointsRoutes.register(api, pointsService);
-        UserRoutes.register(api, userDAO);
         ApprovalQueueRoutes.register(
                 api,
                 approvalQueueService,
                 choreService,
                 rewardService);
+        NotificationRoutes.register(api, notificationService);
+        PointsRoutes.register(api, pointsService);
+        UserRoutes.register(api, userDAO);
 
         api.post("/api/assign/daily", ctx -> ctx.json(dailyChoreService.runMorningChoreSweep()));
 
         api.before("/api/chores/*", new AuthMiddleware());
         api.before("/api/rewards/*", new AuthMiddleware());
         api.before("/api/approvals/*", new AuthMiddleware());
+        api.before("/api/notifications/*", new AuthMiddleware());
         api.before("/api/points/*", new AuthMiddleware());
         api.before("/api/users/*", new AuthMiddleware());
         api.before("/api/assign/*", new AuthMiddleware());

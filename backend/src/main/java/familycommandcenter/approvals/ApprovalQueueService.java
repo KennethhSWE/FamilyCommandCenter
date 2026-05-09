@@ -2,6 +2,7 @@ package familycommandcenter.approvals;
 
 import familycommandcenter.chores.ChoreCard;
 import familycommandcenter.rewards.RewardCard;
+import familycommandcenter.notifications.NotificationService;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -10,9 +11,14 @@ import java.util.Optional;
 public class ApprovalQueueService {
 
     private final ApprovalQueueRepository approvalQueueRepository;
+    private final NotificationService notificationService;
 
-    public ApprovalQueueService(ApprovalQueueRepository approvalQueueRepository) {
+    public ApprovalQueueService(
+            ApprovalQueueRepository approvalQueueRepository,
+            NotificationService notificationService) {
+
         this.approvalQueueRepository = approvalQueueRepository;
+        this.notificationService = notificationService;
     }
 
     public void makeSureTableExists() throws SQLException {
@@ -41,6 +47,8 @@ public class ApprovalQueueService {
                 chore.getId(),
                 title,
                 message);
+
+        notificationService.parentNeedsToCheckChore(message);
     }
 
     public void addRewardApproval(
@@ -61,6 +69,8 @@ public class ApprovalQueueService {
                 redemptionId,
                 title,
                 message);
+
+        notificationService.parentNeedsToApproveReward(message);
     }
 
     public void markChoreApprovalApproved(int choreId) throws SQLException {
