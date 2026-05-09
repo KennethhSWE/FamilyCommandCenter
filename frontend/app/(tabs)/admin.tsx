@@ -12,7 +12,13 @@ import {
   useColorScheme,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { api, Chore } from "../../src/lib/api";
+import {
+  api,
+  ApprovalQueueItem,
+  getWaitingApprovals,
+  approveApproval,
+  denyApproval,
+} from "../../src/lib/api";
 
 export default function AdminScreen() {
   const scheme = useColorScheme();
@@ -21,7 +27,7 @@ export default function AdminScreen() {
       ? { bg: "#000", card: "#1e1e1e", text: "#fff", border: "#666" }
       : { bg: "#fff", card: "#f5f5f5", text: "#000", border: "#ccc" };
 
-  const [pendingChores, setPendingChores] = useState<Chore[]>([]);
+  const [approvalQueue, setApprovalQueue] = useState<ApprovalQueueItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   // New chore form state
@@ -32,14 +38,15 @@ export default function AdminScreen() {
   const [isRecurring, setIsRecurring] = useState(false);
 
   // Load pending chores on screen focus
-  const loadPendingChores = useCallback(async () => {
+  const loadApprovalQueue = useCallback(async () => {
     setRefreshing(true);
+
     try {
-      const response = await api.get<Chore[]>("/chores/pending");
-      setPendingChores(response.data);
+      const approvals = await getWaitingApprovals();
+      setApprovalQueue(approvals);
     } catch (error) {
-      console.error("Error loading chores:", error);
-      Alert.alert("Error", "Failed to load chores from server.");
+      console.error("Error loading approvals:", error);
+      Alert.alert("Error", "Failed to load approvals from server.");
     } finally {
       setRefreshing(false);
     }
@@ -47,20 +54,20 @@ export default function AdminScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadPendingChores();
-    }, [loadPendingChores]),
+      loadApprovalQueue();
+    }, [loadApprovalQueue]),
   );
 
   useEffect(() => {
-    loadPendingChores();
-  }, [loadPendingChores]);
+    loadApprovalQueue();
+  }, [loadApprovalQueue]);
 
   // Approve a chore
   const approveChore = async (id: number) => {
     try {
       await api.patch(`/chores/${id}/approve`);
       Alert.alert("Approved", "Chore approved.");
-      loadPendingChores();
+      loadApprovalQueue();
     } catch (error) {
       console.error("approve:", error);
       Alert.alert("Error", "Could not approve chore.");
@@ -68,14 +75,25 @@ export default function AdminScreen() {
   };
 
   // Reject a chore
-  const rejectChore = async (id: number) => {
+  const approveQueuedThing = async (approvalId: number) => {
     try {
-      await api.patch(`/chores/${id}/reject`);
-      Alert.alert("Rejected", "Chore rejected.");
-      loadPendingChores();
+      await approveApproval(approvalId);
+      Alert.alert("Approved", "Approval completed.");
+      loadApprovalQueue();
     } catch (error) {
-      console.error("reject:", error);
-      Alert.alert("Error", "Could not reject chore.");
+      console.error("approve:", error);
+      Alert.alert("Error", "Could not approve this item.");
+    }
+  };
+
+  const denyQueuedThing = async (approvalId: number) => {
+    try {
+      await denyApproval(approvalId);
+      Alert.alert("Denied", "Approval denied.");
+      loadApprovalQueue();
+    } catch (error) {
+      console.error("deny:", error);
+      Alert.alert("Error", "Could not deny this item.");
     }
   };
 
@@ -113,32 +131,44 @@ export default function AdminScreen() {
     <ScrollView
       contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={loadPendingChores} />
+        <RefreshControl refreshing={refreshing} onRefresh={loadApprovalQueue} />
       }
     >
       <Text style={[styles.header, { color: colors.text }]}>
         Pending Approvals
       </Text>
 
-      {pendingChores.length === 0 ? (
+      {approvalQueue.length === 0 ? (
         <Text style={{ textAlign: "center", color: "#888" }}>
-          No pending chores at the moment.
+          No approvals waiting right now.
         </Text>
       ) : (
-        pendingChores.map((ch) => (
+        approvalQueue.map((approval) => (
           <View
-            key={ch.id}
+            key={approval.id}
             style={[styles.card, { backgroundColor: colors.card }]}
           >
             <Text style={[styles.title, { color: colors.text }]}>
-              {ch.assignedTo} — {ch.name} ({ch.points} pts)
+              {approval.title}
             </Text>
+
+            <Text style={{ color: colors.text, marginBottom: 10 }}>
+              {approval.message}
+            </Text>
+
+            <Text style={{ color: "#888", marginBottom: 10 }}>
+              Type: {approval.approvalType}
+            </Text>
+
             <View style={styles.btnRow}>
-              <Button title="Approve" onPress={() => approveChore(ch.id)} />
               <Button
-                title="Reject"
+                title="Approve"
+                onPress={() => approveQueuedThing(approval.id)}
+              />
+              <Button
+                title="Deny"
                 color="#e74c3c"
-                onPress={() => rejectChore(ch.id)}
+                onPress={() => denyQueuedThing(approval.id)}
               />
             </View>
           </View>

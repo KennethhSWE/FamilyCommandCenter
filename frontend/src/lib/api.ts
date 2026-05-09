@@ -45,6 +45,21 @@ export interface Reward {
   requiresApproval: boolean;
 }
 
+export interface ApprovalQueueItem {
+  id: number;
+  approvalType:
+    | "CHORE_COMPLETION"
+    | "REWARD_REDEMPTION"
+    | "REWARD_SUGGESTION"
+    | "UNEVEN_CHORE_TRADE";
+  relatedRecordId: number;
+  status: "WAITING" | "APPROVED" | "DENIED";
+  title: string;
+  message: string;
+  createdAt: string;
+  reviewedAt?: string | null;
+}
+
 type RawKid = {
   id: number;
   username: string;
@@ -184,3 +199,15 @@ export const getPoints = async (username: string): Promise<number> => {
   );
   return raw.total_points;
 };
+
+/* ===================================================================
+   Rewards & Points
+   =================================================================== */
+export const getWaitingApprovals = () =>
+  unwrap<ApprovalQueueItem[]>(api.get("/approvals/waiting"));
+
+export const approveApproval = (approvalId: number) =>
+  unwrap(api.patch(`/approvals/${approvalId}/approve`));
+
+export const denyApproval = (approvalId: number) =>
+  unwrap(api.patch(`/approvals/${approvalId}/deny`));

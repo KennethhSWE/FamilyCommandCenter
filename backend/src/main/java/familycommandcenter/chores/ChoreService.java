@@ -2,6 +2,8 @@ package familycommandcenter.chores;
 
 import familycommandcenter.points.PointsService;
 
+import familycommandcenter.approvals.ApprovalQueueService;
+
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
@@ -10,10 +12,16 @@ public class ChoreService {
 
     private final ChoreRepository choreRepository;
     private final PointsService pointsService;
+    private final ApprovalQueueService approvalQueueService;
 
-    public ChoreService(ChoreRepository choreRepository, PointsService pointsService) {
+    public ChoreService(
+            ChoreRepository choreRepository,
+            PointsService pointsService,
+            ApprovalQueueService approvalQueueService) {
+
         this.choreRepository = choreRepository;
         this.pointsService = pointsService;
+        this.approvalQueueService = approvalQueueService;
     }
 
     public void addChore(CreateChoreRequest chore) throws SQLException {
@@ -47,7 +55,19 @@ public class ChoreService {
     }
 
     public boolean kidSaysChoreIsDone(int choreId) throws SQLException {
-        return choreRepository.requestParentCheck(choreId);
+        Optional<ChoreCard> possibleChore = choreRepository.findById(choreId);
+
+        if (possibleChore.isEmpty()) {
+            return false;
+        }
+
+        boolean waitingForParent = choreRepository.requestParentCheck(choreId);
+
+        if (waitingForParent) {
+            approvalQueueService.addChoreApproval(possibleChore.get());
+        }
+
+        return waitingForParent;
     }
 
     public boolean parentApprovesChore(int choreId) throws SQLException {
@@ -62,13 +82,20 @@ public class ChoreService {
 
         if (approved) {
             pointsService.addPointsForApprovedChore(chore.getAssignedTo(), chore.getPoints());
+            approvalQueueService.markChoreApprovalApproved(choreId);
         }
 
         return approved;
     }
 
     public boolean parentRejectsChore(int choreId) throws SQLException {
-        return choreRepository.rejectChore(choreId);
+        boolean rejected = choreRepository.rejectChore(choreId);
+
+        if (rejected) {
+            approvalQueueService.markChoreApprovalDenied(choreId);
+        }
+
+        return rejected;
     }
 
     public void deleteChoreForNow(int choreId) throws SQLException {
