@@ -43,7 +43,7 @@ family-command-center/
 
 ```bash
 cd backend
-./gradlew run
+gradle run
 ```
 
 Make sure PostgreSQL is running and `application.properties` is configured.
