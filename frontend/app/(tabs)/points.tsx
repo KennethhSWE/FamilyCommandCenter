@@ -36,12 +36,12 @@ export default function PointsScreen() {
       const rows: Row[] = await Promise.all(
         kids.map(async (k) => {
           try {
-            const { points } = await getPoints(k.username);
+            const points = await getPoints(k.username);
             return { user_name: k.username, total_points: points ?? 0 };
           } catch {
             return { user_name: k.username, total_points: 0 };
           }
-        })
+        }),
       );
 
       rows.sort((a, b) => b.total_points - a.total_points);

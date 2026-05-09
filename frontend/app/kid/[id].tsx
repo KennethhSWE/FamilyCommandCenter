@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 
-import { getChoresByKid, completeChore, Chore } from "../../src/lib/api";
+import { getChoresByKid, requestChoreApproval, Chore } from "../../src/lib/api";
 
 export default function KidChoresScreen() {
   // Carousel passes ?id=<username>
@@ -38,18 +38,19 @@ export default function KidChoresScreen() {
     })();
   }, [username]);
 
-  const onComplete = async (id: number) => {
-    // optimistic update
+  const askParentToCheckChore = async (id: number) => {
+    // Optimistic update: kid asked for approval, but did not earn points yet.
     setChores((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, complete: true } : c)),
+      prev.map((c) => (c.id === id ? { ...c, requestedComplete: true } : c)),
     );
+
     try {
-      await completeChore(id);
+      await requestChoreApproval(id);
     } catch (e) {
-      // rollback if it failed
-      console.error("Complete failed:", e);
+      console.error("Request approval failed:", e);
+
       setChores((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, complete: false } : c)),
+        prev.map((c) => (c.id === id ? { ...c, requestedComplete: false } : c)),
       );
     }
   };
@@ -95,13 +96,15 @@ export default function KidChoresScreen() {
 
           {item.complete ? (
             <Text style={styles.doneBadge}>Done</Text>
+          ) : item.requestedComplete ? (
+            <Text style={styles.waitingBadge}>Waiting for Parent</Text>
           ) : (
             <TouchableOpacity
-              onPress={() => onComplete(item.id)}
+              onPress={() => askParentToCheckChore(item.id)}
               style={styles.completeBtn}
               activeOpacity={0.9}
             >
-              <Text style={styles.completeTxt}>Complete</Text>
+              <Text style={styles.completeTxt}>I Did It</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -159,4 +162,9 @@ const styles = StyleSheet.create({
   },
   completeTxt: { color: "#fff", fontWeight: "700" },
   doneBadge: { color: "#16a34a", fontWeight: "700" },
+  waitingBadge: {
+    color: "#f39c12",
+    fontWeight: "700",
+    alignSelf: "center",
+  },
 });

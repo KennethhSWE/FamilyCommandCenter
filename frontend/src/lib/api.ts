@@ -71,6 +71,14 @@ type RawPoints = {
   total_points: number;
 };
 
+type RawReward = {
+  id: number;
+  name: string;
+  cost: number;
+  requiresApproval?: boolean;
+  requires_approval?: boolean;
+};
+
 /* ---- internal helper so all calls return data or throw ---- */
 const unwrap = async <T>(p: Promise<AxiosResponse<T>>): Promise<T> => {
   try {
@@ -140,12 +148,25 @@ export const createChore = (c: Partial<Chore>) =>
 export const createChoreBulk = (chores: Partial<Chore>[]) =>
   unwrap(api.post("/chores/bulk", chores));
 
-export const completeChore = (id: number) =>
-  unwrap(api.post(`/chores/complete/${id}`));
+export const requestChoreApproval = (id: number) =>
+  unwrap(api.patch(`/chores/${id}/request-complete`));
 
 /* ===================================================================
    Rewards & Points
    =================================================================== */
+
+export const getRewards = async (): Promise<Reward[]> => {
+  const raw = await unwrap<RawReward[]>(api.get("/rewards"));
+
+  return raw.map((reward) => ({
+    id: reward.id,
+    name: reward.name,
+    cost: reward.cost,
+    requiresApproval:
+      reward.requiresApproval ?? reward.requires_approval ?? false,
+  }));
+};
+
 export const createRewardBulk = (
   householdId: string,
   rewards: { name: string; cost: number; requiresApproval: boolean }[],

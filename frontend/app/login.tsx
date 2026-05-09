@@ -20,7 +20,7 @@ export default function LoginScreen() {
 
       await saveToken(res.data.token);
 
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/kids");
     } catch (err: any) {
       console.error(err);
       Alert.alert(

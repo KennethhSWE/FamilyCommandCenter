@@ -2,7 +2,12 @@ package familycommandcenter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import familycommandcenter.controllers.AssignController;
+import familycommandcenter.chores.ChoreRepository;
+import familycommandcenter.chores.ChoreService;
+import familycommandcenter.chores.DailyChoreService;
+import familycommandcenter.points.PointsService;
+import familycommandcenter.chores.ChoreRepository;
+import familycommandcenter.chores.ChoreService;
 import familycommandcenter.model.PointsBankDAO;
 import familycommandcenter.model.RedemptionDAO;
 import familycommandcenter.model.RewardDAO;
@@ -27,7 +32,15 @@ public final class App {
         PointsBankDAO pointsDAO = new PointsBankDAO(ds);
         RewardDAO rewardDAO = new RewardDAO(ds);
         RedemptionDAO redemptionDAO = new RedemptionDAO(ds);
-        AssignController assignController = new AssignController(userDAO);
+
+        PointsService pointsService = new PointsService(pointsDAO);
+
+        ChoreRepository choreRepository = new ChoreRepository(ds);
+        ChoreService choreService = new ChoreService(choreRepository, pointsService);
+        DailyChoreService dailyChoreService = new DailyChoreService(
+                userDAO,
+                choreRepository,
+                pointsService);
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
@@ -40,11 +53,11 @@ public final class App {
         System.out.println("Javalin listening on :7070");
 
         AuthRoutes.register(api, userDAO, pointsDAO);
-        ChoreRoutes.register(api);
+        ChoreRoutes.register(api, choreService);
         RewardRoutes.register(api, rewardDAO, pointsDAO, redemptionDAO);
         UserRoutes.register(api, userDAO);
 
-        api.post("/api/assign/daily", ctx -> assignController.assignDailyChores());
+        api.post("/api/assign/daily", ctx -> ctx.json(dailyChoreService.runMorningChoreSweep()));
 
         api.before("/api/chores/*", new AuthMiddleware());
         api.before("/api/rewards/*", new AuthMiddleware());

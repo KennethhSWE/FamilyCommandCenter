@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import { getPoints } from "../../src/lib/api";
 
 export interface Kid {
+  id?: number;
   username: string;
   name: string;
   role: "kid" | "parent";

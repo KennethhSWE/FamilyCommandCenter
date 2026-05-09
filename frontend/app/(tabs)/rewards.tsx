@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { View, ScrollView, Text, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  View,
+  ScrollView,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 
-import { getRewards, getToken, getUsername, getPoints, Reward } from "../../src/lib/api";
+import { getRewards, getPoints, Reward } from "../../src/lib/api";
+import { getUsername } from "../../src/lib/auth";
 
 export default function RewardsScreen() {
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -11,8 +18,7 @@ export default function RewardsScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const token = await getToken();
-        const username = token ? await getUsername(token) : null;
+        const username = await getUsername();
 
         if (username) {
           const [rewardList, pointData] = await Promise.all([
@@ -20,7 +26,7 @@ export default function RewardsScreen() {
             getPoints(username),
           ]);
           setRewards(rewardList);
-          setPoints(pointData.points);
+          setPoints(pointData);
         }
       } catch (e) {
         console.error("Failed to load rewards:", e);

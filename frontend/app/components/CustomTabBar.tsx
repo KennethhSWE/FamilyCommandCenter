@@ -30,7 +30,9 @@ const tabIcon = (route: string, color: string, size: number) => {
   if (route.includes("kids"))
     return <FontAwesome5 name="child" size={size} color={color} />;
   if (route.includes("rewards"))
-    return <MaterialCommunityIcons name="gift-outline" size={size} color={color} />;
+    return (
+      <MaterialCommunityIcons name="gift-outline" size={size} color={color} />
+    );
   if (route.includes("points"))
     return <MaterialIcons name="stars" size={size} color={color} />;
   if (route.includes("admin"))
@@ -44,11 +46,12 @@ export default function CustomTabBar({
   descriptors,
   navigation,
 }: BottomTabBarProps) {
-  const insets   = useSafeAreaInsets();
-  const scheme   = useColorScheme();
-  const colors   = scheme === "dark"
-    ? { bg: "#1e1e1e", active: "#8e44ad", text: "#fff", border: "#333" }
-    : { bg: "#fff",   active: "#007aff",  text: "#000", border: "#ccc" };
+  const insets = useSafeAreaInsets();
+  const scheme = useColorScheme();
+  const colors =
+    scheme === "dark"
+      ? { bg: "#1e1e1e", active: "#8e44ad", text: "#fff", border: "#333" }
+      : { bg: "#fff", active: "#007aff", text: "#000", border: "#ccc" };
 
   const SVG_W = WIN_WIDTH - 60;
   const centerX = SVG_W / 2;
@@ -85,7 +88,7 @@ export default function CustomTabBar({
       >
         {state.routes.map((route, idx) => {
           const focused = state.index === idx;
-          const label   =
+          const label =
             descriptors[route.key].options.tabBarLabel ??
             descriptors[route.key].options.title ??
             route.name;
@@ -96,13 +99,14 @@ export default function CustomTabBar({
               target: route.key,
               canPreventDefault: true,
             });
-            if (!focused && !evt.defaultPrevented) navigation.navigate(route.name);
+            if (!focused && !evt.defaultPrevented)
+              navigation.navigate(route.name);
           };
 
           /* center (Kids) gets elevated treatment */
           const isCenter = route.name.toLowerCase().includes("kids");
-          const size     = isCenter ? 32 : 24;
-          const color    = focused ? colors.active : colors.text;
+          const size = isCenter ? 32 : 24;
+          const color = focused ? colors.active : colors.text;
 
           if (isCenter) {
             return (
@@ -110,7 +114,10 @@ export default function CustomTabBar({
                 <TouchableOpacity
                   onPress={onPress}
                   activeOpacity={0.85}
-                  style={[styles.centerBtn, { backgroundColor: colors.bg, borderColor: colors.border }]}
+                  style={[
+                    styles.centerBtn,
+                    { backgroundColor: colors.bg, borderColor: colors.border },
+                  ]}
                 >
                   {tabIcon(route.name, color, size)}
                 </TouchableOpacity>
@@ -128,7 +135,9 @@ export default function CustomTabBar({
               activeOpacity={0.7}
             >
               {tabIcon(route.name, color, size)}
-              <Text style={{ fontSize: 12, color }}>{label}</Text>
+              <Text style={{ fontSize: 12, color }}>
+                {typeof label === "string" ? label : route.name}
+              </Text>
             </TouchableOpacity>
           );
         })}

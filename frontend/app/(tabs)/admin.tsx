@@ -16,9 +16,10 @@ import { api, Chore } from "../../src/lib/api";
 
 export default function AdminScreen() {
   const scheme = useColorScheme();
-  const colors = scheme === "dark"
-    ? { bg: "#000", card: "#1e1e1e", text: "#fff", border: "#666" }
-    : { bg: "#fff", card: "#f5f5f5", text: "#000", border: "#ccc" };
+  const colors =
+    scheme === "dark"
+      ? { bg: "#000", card: "#1e1e1e", text: "#fff", border: "#666" }
+      : { bg: "#fff", card: "#f5f5f5", text: "#000", border: "#ccc" };
 
   const [pendingChores, setPendingChores] = useState<Chore[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,9 +35,8 @@ export default function AdminScreen() {
   const loadPendingChores = useCallback(async () => {
     setRefreshing(true);
     try {
-      const response = await api.get<Chore[]>("/chores");
-      const chores = response.data.filter(ch => ch.requestedComplete && !ch.complete);
-      setPendingChores(chores);
+      const response = await api.get<Chore[]>("/chores/pending");
+      setPendingChores(response.data);
     } catch (error) {
       console.error("Error loading chores:", error);
       Alert.alert("Error", "Failed to load chores from server.");
@@ -45,8 +45,15 @@ export default function AdminScreen() {
     }
   }, []);
 
-  useFocusEffect(loadPendingChores);
-  useEffect(() => { loadPendingChores(); }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadPendingChores();
+    }, [loadPendingChores]),
+  );
+
+  useEffect(() => {
+    loadPendingChores();
+  }, [loadPendingChores]);
 
   // Approve a chore
   const approveChore = async (id: number) => {
@@ -109,34 +116,48 @@ export default function AdminScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={loadPendingChores} />
       }
     >
-      <Text style={[styles.header, { color: colors.text }]}>Pending Approvals</Text>
+      <Text style={[styles.header, { color: colors.text }]}>
+        Pending Approvals
+      </Text>
 
       {pendingChores.length === 0 ? (
         <Text style={{ textAlign: "center", color: "#888" }}>
           No pending chores at the moment.
         </Text>
       ) : (
-        pendingChores.map(ch => (
-          <View key={ch.id} style={[styles.card, { backgroundColor: colors.card }]}>
+        pendingChores.map((ch) => (
+          <View
+            key={ch.id}
+            style={[styles.card, { backgroundColor: colors.card }]}
+          >
             <Text style={[styles.title, { color: colors.text }]}>
               {ch.assignedTo} — {ch.name} ({ch.points} pts)
             </Text>
             <View style={styles.btnRow}>
               <Button title="Approve" onPress={() => approveChore(ch.id)} />
-              <Button title="Reject" color="#e74c3c" onPress={() => rejectChore(ch.id)} />
+              <Button
+                title="Reject"
+                color="#e74c3c"
+                onPress={() => rejectChore(ch.id)}
+              />
             </View>
           </View>
         ))
       )}
 
-      <Text style={[styles.header, { color: colors.text }]}>Create New Chore</Text>
+      <Text style={[styles.header, { color: colors.text }]}>
+        Create New Chore
+      </Text>
 
       <TextInput
         placeholder="Chore name"
         placeholderTextColor="#888"
         value={name}
         onChangeText={setName}
-        style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+        style={[
+          styles.input,
+          { borderColor: colors.border, color: colors.text },
+        ]}
       />
       <TextInput
         placeholder="Points"
@@ -144,7 +165,10 @@ export default function AdminScreen() {
         value={points}
         onChangeText={setPoints}
         keyboardType="numeric"
-        style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+        style={[
+          styles.input,
+          { borderColor: colors.border, color: colors.text },
+        ]}
       />
       <TextInput
         placeholder="Min age (optional)"
@@ -152,7 +176,10 @@ export default function AdminScreen() {
         value={minAge}
         onChangeText={setMinAge}
         keyboardType="numeric"
-        style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+        style={[
+          styles.input,
+          { borderColor: colors.border, color: colors.text },
+        ]}
       />
       <TextInput
         placeholder="Max age (optional)"
@@ -160,7 +187,10 @@ export default function AdminScreen() {
         value={maxAge}
         onChangeText={setMaxAge}
         keyboardType="numeric"
-        style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+        style={[
+          styles.input,
+          { borderColor: colors.border, color: colors.text },
+        ]}
       />
       <View style={styles.switchRow}>
         <Text style={{ color: colors.text }}>Recurring</Text>
@@ -173,15 +203,15 @@ export default function AdminScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20 },
-  header:    { fontSize: 20, fontWeight: "700", marginBottom: 16 },
+  header: { fontSize: 20, fontWeight: "700", marginBottom: 16 },
   card: {
     padding: 16,
     borderRadius: 10,
     marginBottom: 16,
     elevation: 2,
   },
-  title:   { fontSize: 16, marginBottom: 10 },
-  btnRow:  { flexDirection: "row", justifyContent: "space-between" },
+  title: { fontSize: 16, marginBottom: 10 },
+  btnRow: { flexDirection: "row", justifyContent: "space-between" },
   input: {
     borderWidth: 1,
     borderRadius: 6,
