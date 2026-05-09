@@ -33,24 +33,35 @@ public class ChoreDataService {
                             +
                             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-            ps.setString(1, chore.getName());
-            ps.setString(2, chore.getAssignedTo());
-            ps.setBoolean(3, chore.isComplete());
+            String assignedKid = chore.getAssignedTo();
 
-            // If due date is null, use current date
-            if (chore.getDueDate() == null) {
+            if (assignedKid != null && assignedKid.isBlank()) {
+                assignedKid = null;
+            }
+
+            ps.setString(1, chore.getName());
+            ps.setString(2, assignedKid);
+            ps.setBoolean(3, false);
+
+            /*
+             * If this is a pool chore, assignedKid is null and dueDate should stay null.
+             * If this is an assigned chore, use today when no due date is provided.
+             */
+            if (chore.getDueDate() != null) {
+                ps.setDate(4, java.sql.Date.valueOf(chore.getDueDate()));
+            } else if (assignedKid != null) {
                 ps.setDate(4, java.sql.Date.valueOf(LocalDate.now()));
             } else {
-                ps.setDate(4, java.sql.Date.valueOf(chore.getDueDate()));
+                ps.setNull(4, Types.DATE);
             }
 
             ps.setInt(5, chore.getPoints());
-            ps.setBoolean(6, chore.isVerified());
-            ps.setBoolean(7, chore.isRequestedComplete());
-            ps.setBoolean(8, chore.isComplete());
-            ps.setObject(9, chore.getMinAge(), java.sql.Types.INTEGER);
-            ps.setObject(10, chore.getMaxAge(), java.sql.Types.INTEGER);
-            ps.setObject(11, chore.getCreatedBy(), java.sql.Types.INTEGER);
+            ps.setBoolean(6, false);
+            ps.setBoolean(7, false);
+            ps.setBoolean(8, false);
+            ps.setObject(9, chore.getMinAge(), Types.INTEGER);
+            ps.setObject(10, chore.getMaxAge(), Types.INTEGER);
+            ps.setObject(11, chore.getCreatedBy(), Types.INTEGER);
             ps.setBoolean(12, chore.isRecurring());
 
             ps.executeUpdate();
@@ -93,7 +104,7 @@ public class ChoreDataService {
 
     public static boolean isAlreadyAssignedToday(String username, String choreName) throws SQLException {
         String sql = """
-                SELECT 1 
+                SELECT 1
                 FROM chores
                 WHERE assigned_to = ?
                 AND name = ?
@@ -102,15 +113,15 @@ public class ChoreDataService {
                 """;
 
         try (Connection c = Database.getConnection();
-            PreparedStatement ps = c.prepareStatement(sql)) {
+                PreparedStatement ps = c.prepareStatement(sql)) {
 
-                ps.setString(1, username);
-                ps.setString(2, choreName);
+            ps.setString(1, username);
+            ps.setString(2, choreName);
 
-                try (ResultSet rs = ps.executeQuery()) {
-                    return rs.next(); 
-                }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
             }
+        }
     }
 
     private static void addChoreToPool(Chore c) throws SQLException {
@@ -220,6 +231,7 @@ public class ChoreDataService {
                     SELECT assigned_to, SUM(points) AS total
                     FROM chores
                     WHERE is_complete = TRUE
+                    AND assigned_to IS NOT NULL
                     GROUP BY assigned_to
                 """;
         try (Connection c = Database.getConnection();
@@ -233,12 +245,76 @@ public class ChoreDataService {
         }
     }
 
-    public static boolean markComplete(int choreId) throws SQLException {
-        String sql = "UPDATE chores SET is_complete = TRUE WHERE id = ?";
+    public static boolean requestCompletion(int choreId) throws SQLException {
+        String sql = """
+                UPDATE chores
+                SET requested_complete = TRUE
+                WHERE id = ?
+                AND is_complete = FALSE
+                """;
+
         try (Connection c = Database.getConnection();
-        PreparedStatement ps = c.prepareStatement(sql)) {
+                PreparedStatement ps = c.prepareStatement(sql)) {
+
             ps.setInt(1, choreId);
             return ps.executeUpdate() == 1;
+        }
+    }
+
+    public static boolean approveCompletion(int choreId) throws SQLException {
+        String sql = """
+                UPDATE chores
+                SET is_complete = TRUE,
+                    complete = TRUE,
+                    requested_complete = FALSE,
+                    is_verified = TRUE
+                WHERE id = ?
+                """;
+
+        try (Connection c = Database.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setInt(1, choreId);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
+    public static boolean rejectCompletion(int choreId) throws SQLException {
+        String sql = """
+                UPDATE chores
+                SET requested_complete = FALSE
+                WHERE id = ?
+                AND is_complete = FALSE
+                """;
+
+        try (Connection c = Database.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setInt(1, choreId);
+            return ps.executeUpdate() == 1;
+        }
+    }
+
+    public static List<Chore> getPendingApprovals() throws SQLException {
+        String sql = """
+                SELECT *
+                FROM chores
+                WHERE requested_complete = TRUE
+                AND is_complete = FALSE
+                ORDER BY due_date ASC, assigned_to ASC
+                """;
+
+        try (Connection c = Database.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+
+            List<Chore> list = new ArrayList<>();
+
+            while (rs.next()) {
+                list.add(map(rs));
+            }
+
+            return list;
         }
     }
 }
