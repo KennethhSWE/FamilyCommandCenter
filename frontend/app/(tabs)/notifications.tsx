@@ -1,3 +1,4 @@
+import ParentPinGate from "../components/ParentPinGate";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -59,42 +60,47 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={loadNotifications} />
-      }
-    >
-      <View style={styles.headerRow}>
-        <Text style={styles.header}>Parent Notifications</Text>
-        <Button title="Mark All Read" onPress={clearTheBell} />
-      </View>
+    <ParentPinGate title="Parent Alerts">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={loadNotifications}
+          />
+        }
+      >
+        <View style={styles.headerRow}>
+          <Text style={styles.header}>Parent Notifications</Text>
+          <Button title="Mark All Read" onPress={clearTheBell} />
+        </View>
 
-      {notifications.length === 0 ? (
-        <Text style={styles.emptyText}>No notifications yet.</Text>
-      ) : (
-        notifications.map((notification) => (
-          <View
-            key={notification.id}
-            style={[
-              styles.card,
-              notification.read ? styles.readCard : styles.unreadCard,
-            ]}
-          >
-            <Text style={styles.title}>{notification.title}</Text>
-            <Text style={styles.message}>{notification.message}</Text>
-            <Text style={styles.type}>{notification.type}</Text>
+        {notifications.length === 0 ? (
+          <Text style={styles.emptyText}>No notifications yet.</Text>
+        ) : (
+          notifications.map((notification) => (
+            <View
+              key={notification.id}
+              style={[
+                styles.card,
+                notification.read ? styles.readCard : styles.unreadCard,
+              ]}
+            >
+              <Text style={styles.title}>{notification.title}</Text>
+              <Text style={styles.message}>{notification.message}</Text>
+              <Text style={styles.type}>{notification.type}</Text>
 
-            {!notification.read && (
-              <Button
-                title="Mark Read"
-                onPress={() => markOneRead(notification.id)}
-              />
-            )}
-          </View>
-        ))
-      )}
-    </ScrollView>
+              {!notification.read && (
+                <Button
+                  title="Mark Read"
+                  onPress={() => markOneRead(notification.id)}
+                />
+              )}
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </ParentPinGate>
   );
 }
 

@@ -20,6 +20,53 @@ public class ChoreRepository {
         this.dataSource = dataSource;
     }
 
+    public void makeSureChoreTableIsReady() throws SQLException {
+        String createTable = """
+                CREATE TABLE IF NOT EXISTS chores (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(150) NOT NULL,
+                    assigned_to VARCHAR(100),
+                    is_complete BOOLEAN NOT NULL DEFAULT FALSE,
+                    due_date DATE,
+                    points INTEGER NOT NULL DEFAULT 0,
+                    requested_complete BOOLEAN NOT NULL DEFAULT FALSE,
+                    min_age INTEGER,
+                    max_age INTEGER,
+                    is_recurring BOOLEAN NOT NULL DEFAULT FALSE,
+                    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_by INTEGER,
+                    complete BOOLEAN NOT NULL DEFAULT FALSE
+                )
+                """;
+
+        String[] columnFixes = {
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(100)",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS is_complete BOOLEAN NOT NULL DEFAULT FALSE",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS due_date DATE",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS requested_complete BOOLEAN NOT NULL DEFAULT FALSE",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS min_age INTEGER",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS max_age INTEGER",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN NOT NULL DEFAULT FALSE",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS created_by INTEGER",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS complete BOOLEAN NOT NULL DEFAULT FALSE"
+        };
+
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement ps = connection.prepareStatement(createTable)) {
+            ps.executeUpdate();
+        }
+
+        try (Connection connection = dataSource.getConnection()) {
+            for (String sql : columnFixes) {
+                try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                    ps.executeUpdate();
+                }
+            }
+        }
+    }
+
     public void saveChore(CreateChoreRequest chore) throws SQLException {
         String sql = """
                 INSERT INTO chores (

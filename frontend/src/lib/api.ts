@@ -1,7 +1,10 @@
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { getToken } from "./auth";
 
-/* ------------ Axios instance w/ automatic Bearer token ------------ */
+/* ===================================================================
+   Axios setup
+   =================================================================== */
+
 const BASE_URL = "http://10.0.2.2:7070/api";
 
 export const api = axios.create({
@@ -11,14 +14,32 @@ export const api = axios.create({
 
 api.interceptors.request.use(async (cfg: InternalAxiosRequestConfig) => {
   const token = await getToken();
+
   if (token) {
     cfg.headers = cfg.headers ?? {};
     cfg.headers["Authorization"] = `Bearer ${token}`;
   }
+
   return cfg;
 });
 
-/* ----------------------------- Types ------------------------------ */
+/* ===================================================================
+   Shared helper
+   =================================================================== */
+
+const unwrap = async <T>(request: Promise<AxiosResponse<T>>): Promise<T> => {
+  try {
+    return (await request).data;
+  } catch (error: any) {
+    console.error("[API]", error.response?.data ?? error.message);
+    throw error;
+  }
+};
+
+/* ===================================================================
+   App-facing types
+   =================================================================== */
+
 export interface Kid {
   id: number;
   username: string;
@@ -45,6 +66,25 @@ export interface Reward {
   requiresApproval: boolean;
 }
 
+export interface ParentPinResult {
+  verified: boolean;
+}
+
+export interface ApprovalQueueItem {
+  id: number;
+  approvalType:
+    | "CHORE_COMPLETION"
+    | "REWARD_REDEMPTION"
+    | "REWARD_SUGGESTION"
+    | "UNEVEN_CHORE_TRADE";
+  relatedRecordId: number;
+  status: "WAITING" | "APPROVED" | "DENIED";
+  title: string;
+  message: string;
+  createdAt: string;
+  reviewedAt?: string | null;
+}
+
 export interface ParentNotification {
   id: number;
   type:
@@ -64,20 +104,26 @@ export interface NotificationCount {
   unreadCount: number;
 }
 
-export interface ApprovalQueueItem {
+export type CalendarEntryType = "EVENT" | "BILL";
+
+export interface FamilyCalendarEntry {
   id: number;
-  approvalType:
-    | "CHORE_COMPLETION"
-    | "REWARD_REDEMPTION"
-    | "REWARD_SUGGESTION"
-    | "UNEVEN_CHORE_TRADE";
-  relatedRecordId: number;
-  status: "WAITING" | "APPROVED" | "DENIED";
   title: string;
-  message: string;
+  type: CalendarEntryType;
+  entryDate: string;
+  paid: boolean;
   createdAt: string;
-  reviewedAt?: string | null;
 }
+
+export interface CreateCalendarEntryRequest {
+  title: string;
+  type: CalendarEntryType;
+  entryDate: string;
+}
+
+/* ===================================================================
+   Raw backend shapes
+   =================================================================== */
 
 type RawKid = {
   id: number;
@@ -113,22 +159,17 @@ type RawReward = {
   requires_approval?: boolean;
 };
 
-/* ---- internal helper so all calls return data or throw ---- */
-const unwrap = async <T>(p: Promise<AxiosResponse<T>>): Promise<T> => {
-  try {
-    return (await p).data;
-  } catch (e: any) {
-    console.error("[API]", e.response?.data ?? e.message);
-    throw e;
-  }
-};
-
 /* ===================================================================
-   Kids
+   Kids / Family
    =================================================================== */
+
 export const getKids = async (): Promise<Kid[]> => {
   const raw = await unwrap<RawKid[]>(api.get("/users/kids"));
-  return raw.map((k) => ({ ...k, name: k.username }));
+
+  return raw.map((kid) => ({
+    ...kid,
+    name: kid.username,
+  }));
 };
 
 export const getKidsByHousehold = async (
@@ -142,13 +183,16 @@ export const getKidsByHousehold = async (
     api.get(`/kids/${encodeURIComponent(householdId)}`),
   );
 
-  return raw.map((k) => ({ ...k, name: k.username }));
+  return raw.map((kid) => ({
+    ...kid,
+    name: kid.username,
+  }));
 };
 
 /* ===================================================================
    Chores
-   Back-end route: GET /api/chores/kid/{username}
    =================================================================== */
+
 export const getChoresByKid = async (username: string): Promise<Chore[]> => {
   const raw = await unwrap<RawChore[]>(
     api.get(`/chores/kid/${encodeURIComponent(username)}`),
@@ -156,18 +200,18 @@ export const getChoresByKid = async (username: string): Promise<Chore[]> => {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  return raw.map((c) => {
-    const dueDate = c.dueDate ?? c.due_date ?? "";
-    const complete = c.complete ?? c.isComplete ?? false;
+  return raw.map((chore) => {
+    const dueDate = chore.dueDate ?? chore.due_date ?? "";
+    const complete = chore.complete ?? chore.isComplete ?? false;
     const requestedComplete =
-      c.requestedComplete ?? c.requested_complete ?? false;
-    const assignedTo = c.assignedTo ?? c.assigned_to ?? "";
+      chore.requestedComplete ?? chore.requested_complete ?? false;
+    const assignedTo = chore.assignedTo ?? chore.assigned_to ?? "";
 
     return {
-      id: c.id,
-      name: c.name,
+      id: chore.id,
+      name: chore.name,
       assignedTo,
-      points: c.points,
+      points: chore.points,
       complete,
       requestedComplete,
       dueDate,
@@ -176,17 +220,65 @@ export const getChoresByKid = async (username: string): Promise<Chore[]> => {
   });
 };
 
-export const createChore = (c: Partial<Chore>) =>
-  unwrap(api.post("/chores", c));
+export const createChore = (chore: CreateChorePayload) => {
+  const cleanedUpChore = {
+    name: chore.name,
+    assignedTo: chore.assignedTo,
+    points: Number(chore.points) || 0,
+    dueDate: chore.dueDate,
+    minAge: chore.minAge ?? null,
+    maxAge: chore.maxAge ?? null,
+    recurring: chore.recurring ?? chore.isRecurring ?? false,
+    createdBy: chore.createdBy ?? null,
+  };
 
-export const createChoreBulk = (chores: Partial<Chore>[]) =>
-  unwrap(api.post("/chores/bulk", chores));
+  return unwrap(api.post("/chores", cleanedUpChore));
+};
 
-export const requestChoreApproval = (id: number) =>
-  unwrap(api.patch(`/chores/${id}/request-complete`));
+export type CreateChorePayload = {
+  name: string;
+  assignedTo?: string;
+  points: number;
+  dueDate?: string;
+  minAge?: number | null;
+  maxAge?: number | null;
+  recurring?: boolean;
+  isRecurring?: boolean;
+  createdBy?: number | null;
+};
+
+export const createChoreBulk = (chores: CreateChorePayload[]) => {
+  const cleanedUpChores = chores.map((chore) => ({
+    name: chore.name,
+    assignedTo: chore.assignedTo,
+    points: Number(chore.points) || 0,
+    dueDate: chore.dueDate,
+    minAge: chore.minAge ?? null,
+    maxAge: chore.maxAge ?? null,
+    recurring: chore.recurring ?? chore.isRecurring ?? false,
+    createdBy: chore.createdBy ?? null,
+  }));
+
+  return unwrap(api.post("/chores/bulk", cleanedUpChores));
+};
+
+export const requestChoreApproval = (choreId: number) =>
+  unwrap(api.patch(`/chores/${choreId}/request-complete`));
 
 /* ===================================================================
-   Rewards & Points
+   Points
+   =================================================================== */
+
+export const getPoints = async (username: string): Promise<number> => {
+  const raw = await unwrap<RawPoints>(
+    api.get(`/points/${encodeURIComponent(username)}`),
+  );
+
+  return raw.total_points;
+};
+
+/* ===================================================================
+   Rewards
    =================================================================== */
 
 export const getRewards = async (): Promise<Reward[]> => {
@@ -197,31 +289,45 @@ export const getRewards = async (): Promise<Reward[]> => {
     name: reward.name,
     cost: reward.cost,
     requiresApproval:
-      reward.requiresApproval ?? reward.requires_approval ?? false,
+      reward.requiresApproval ?? reward.requires_approval ?? reward.cost > 50,
   }));
 };
 
+/**
+ * Keeps the old householdId parameter so current screens do not break,
+ * but the backend now expects just an array of rewards.
+ */
 export const createRewardBulk = (
-  householdId: string,
+  _householdId: string,
   rewards: { name: string; cost: number; requiresApproval: boolean }[],
-) => unwrap(api.post("/rewards/bulk", { householdId, rewards }));
+) => unwrap(api.post("/rewards/bulk", rewards));
 
 export const redeemReward = (rewardId: number, username: string) =>
   unwrap(api.post("/rewards/redeem", { rewardId, username }));
 
 export const approveRewardRedemption = (redemptionId: number) =>
-  unwrap(api.put(`/rewards/approve/${redemptionId}`));
+  unwrap(api.patch(`/rewards/approve/${redemptionId}`));
 
-export const getPoints = async (username: string): Promise<number> => {
-  const raw = await unwrap<RawPoints>(
-    api.get(`/points/${encodeURIComponent(username)}`),
-  );
-  return raw.total_points;
-};
+export const denyRewardRedemption = (redemptionId: number) =>
+  unwrap(api.patch(`/rewards/deny/${redemptionId}`));
+
+/* ===================================================================
+   Approval Queue
+   =================================================================== */
+
+export const getWaitingApprovals = () =>
+  unwrap<ApprovalQueueItem[]>(api.get("/approvals/waiting"));
+
+export const approveApproval = (approvalId: number) =>
+  unwrap(api.patch(`/approvals/${approvalId}/approve`));
+
+export const denyApproval = (approvalId: number) =>
+  unwrap(api.patch(`/approvals/${approvalId}/deny`));
 
 /* ===================================================================
    Notifications
    =================================================================== */
+
 export const getUnreadNotifications = () =>
   unwrap<ParentNotification[]>(api.get("/notifications/unread"));
 
@@ -238,14 +344,24 @@ export const markAllNotificationsRead = () =>
   unwrap(api.patch("/notifications/read-all"));
 
 /* ===================================================================
-   Approvals 
+   Parent PIN
    =================================================================== */
 
-export const getWaitingApprovals = () =>
-  unwrap<ApprovalQueueItem[]>(api.get("/approvals/waiting"));
+export const verifyParentPin = (pin: string) =>
+  unwrap<ParentPinResult>(api.post("/parent-pin/verify", { pin }));
 
-export const approveApproval = (approvalId: number) =>
-  unwrap(api.patch(`/approvals/${approvalId}/approve`));
+/* ===================================================================
+   Calendar
+   =================================================================== */
 
-export const denyApproval = (approvalId: number) =>
-  unwrap(api.patch(`/approvals/${approvalId}/deny`));
+export const getCalendarEntries = () =>
+  unwrap<FamilyCalendarEntry[]>(api.get("/calendar/entries"));
+
+export const createCalendarEntry = (entry: CreateCalendarEntryRequest) =>
+  unwrap<FamilyCalendarEntry>(api.post("/calendar/entries", entry));
+
+export const toggleBillPaid = (entryId: number) =>
+  unwrap(api.patch(`/calendar/entries/${entryId}/toggle-paid`));
+
+export const deleteCalendarEntry = (entryId: number) =>
+  unwrap(api.delete(`/calendar/entries/${entryId}`));

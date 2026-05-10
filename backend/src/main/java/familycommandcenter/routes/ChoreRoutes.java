@@ -31,7 +31,7 @@ public final class ChoreRoutes {
                 System.err.println("Error saving chores");
                 e.printStackTrace();
                 System.err.println("Request body: " + ctx.body());
-                ctx.status(500).result("Failed to save chores");
+                ctx.status(500).result("Failed to save chores: " + e.getMessage());
             }
         });
 

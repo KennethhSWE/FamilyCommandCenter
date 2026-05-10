@@ -1,3 +1,4 @@
+import ParentPinGate from "../components/ParentPinGate";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
@@ -128,106 +129,19 @@ export default function AdminScreen() {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={loadApprovalQueue} />
-      }
-    >
-      <Text style={[styles.header, { color: colors.text }]}>
-        Pending Approvals
-      </Text>
-
-      {approvalQueue.length === 0 ? (
-        <Text style={{ textAlign: "center", color: "#888" }}>
-          No approvals waiting right now.
-        </Text>
-      ) : (
-        approvalQueue.map((approval) => (
-          <View
-            key={approval.id}
-            style={[styles.card, { backgroundColor: colors.card }]}
-          >
-            <Text style={[styles.title, { color: colors.text }]}>
-              {approval.title}
-            </Text>
-
-            <Text style={{ color: colors.text, marginBottom: 10 }}>
-              {approval.message}
-            </Text>
-
-            <Text style={{ color: "#888", marginBottom: 10 }}>
-              Type: {approval.approvalType}
-            </Text>
-
-            <View style={styles.btnRow}>
-              <Button
-                title="Approve"
-                onPress={() => approveQueuedThing(approval.id)}
-              />
-              <Button
-                title="Deny"
-                color="#e74c3c"
-                onPress={() => denyQueuedThing(approval.id)}
-              />
-            </View>
-          </View>
-        ))
-      )}
-
-      <Text style={[styles.header, { color: colors.text }]}>
-        Create New Chore
-      </Text>
-
-      <TextInput
-        placeholder="Chore name"
-        placeholderTextColor="#888"
-        value={name}
-        onChangeText={setName}
-        style={[
-          styles.input,
-          { borderColor: colors.border, color: colors.text },
-        ]}
-      />
-      <TextInput
-        placeholder="Points"
-        placeholderTextColor="#888"
-        value={points}
-        onChangeText={setPoints}
-        keyboardType="numeric"
-        style={[
-          styles.input,
-          { borderColor: colors.border, color: colors.text },
-        ]}
-      />
-      <TextInput
-        placeholder="Min age (optional)"
-        placeholderTextColor="#888"
-        value={minAge}
-        onChangeText={setMinAge}
-        keyboardType="numeric"
-        style={[
-          styles.input,
-          { borderColor: colors.border, color: colors.text },
-        ]}
-      />
-      <TextInput
-        placeholder="Max age (optional)"
-        placeholderTextColor="#888"
-        value={maxAge}
-        onChangeText={setMaxAge}
-        keyboardType="numeric"
-        style={[
-          styles.input,
-          { borderColor: colors.border, color: colors.text },
-        ]}
-      />
-      <View style={styles.switchRow}>
-        <Text style={{ color: colors.text }}>Recurring</Text>
-        <Switch value={isRecurring} onValueChange={setIsRecurring} />
-      </View>
-      <Button title="Add Chore to Pool" onPress={addChoreToPool} />
-    </ScrollView>
+    <ParentPinGate title="Parent Admin">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={loadApprovalQueue}
+          />
+        }
+      >
+        ...
+      </ScrollView>
+    </ParentPinGate>
   );
 }
 
