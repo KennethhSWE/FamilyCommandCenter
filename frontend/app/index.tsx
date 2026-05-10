@@ -28,8 +28,8 @@ export default function AppLauncher() {
   }
 
   if (hasToken) {
-    return <Redirect href="/(tabs)/kids" />;
+    return <Redirect href={"/(tabs)/kids" as any} />;
   }
 
-  return <Redirect href="/register" />;
+  return <Redirect href={"/setup/parent" as any} />;
 }

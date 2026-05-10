@@ -52,4 +52,20 @@ public class ParentPinService {
 
         return true;
     }
+
+    public boolean setParentPinDuringSetup(String newPin) throws SQLException {
+        if (newPin == null || !newPin.matches("\\d{4}")) {
+            return false;
+        }
+
+        String newPinHash = PasswordUtils.hashPassword(newPin);
+
+        if (parentPinRepository.hasPin()) {
+            parentPinRepository.updatePinHash(newPinHash);
+        } else {
+            parentPinRepository.saveFirstPinHash(newPinHash);
+        }
+
+        return true;
+    }
 }

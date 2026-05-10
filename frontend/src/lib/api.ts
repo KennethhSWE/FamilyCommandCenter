@@ -48,6 +48,16 @@ export interface Kid {
   role: "kid" | "parent";
 }
 
+export interface SetupKidPayload {
+  name: string;
+  age: number;
+}
+
+export interface CreateHouseholdResult {
+  token: string;
+  householdId: string;
+}
+
 export interface Chore {
   id: number;
   name: string;
@@ -58,6 +68,18 @@ export interface Chore {
   overdue?: boolean;
   dueDate: string;
 }
+
+export type CreateChorePayload = {
+  name: string;
+  assignedTo?: string;
+  points: number;
+  dueDate?: string;
+  minAge?: number | null;
+  maxAge?: number | null;
+  recurring?: boolean;
+  isRecurring?: boolean;
+  createdBy?: number | null;
+};
 
 export interface Reward {
   id: number;
@@ -160,6 +182,29 @@ type RawReward = {
 };
 
 /* ===================================================================
+   Setup / Household
+   =================================================================== */
+
+export const createHousehold = (adminName: string, pin: string) =>
+  unwrap<CreateHouseholdResult>(
+    api.post("/household", {
+      adminName,
+      pin,
+    }),
+  );
+
+export const addKidsToHousehold = (
+  householdId: string,
+  kids: SetupKidPayload[],
+) =>
+  unwrap(
+    api.post("/household/kids", {
+      householdId,
+      kids,
+    }),
+  );
+
+/* ===================================================================
    Kids / Family
    =================================================================== */
 
@@ -235,18 +280,6 @@ export const createChore = (chore: CreateChorePayload) => {
   return unwrap(api.post("/chores", cleanedUpChore));
 };
 
-export type CreateChorePayload = {
-  name: string;
-  assignedTo?: string;
-  points: number;
-  dueDate?: string;
-  minAge?: number | null;
-  maxAge?: number | null;
-  recurring?: boolean;
-  isRecurring?: boolean;
-  createdBy?: number | null;
-};
-
 export const createChoreBulk = (chores: CreateChorePayload[]) => {
   const cleanedUpChores = chores.map((chore) => ({
     name: chore.name,
@@ -293,10 +326,6 @@ export const getRewards = async (): Promise<Reward[]> => {
   }));
 };
 
-/**
- * Keeps the old householdId parameter so current screens do not break,
- * but the backend now expects just an array of rewards.
- */
 export const createRewardBulk = (
   _householdId: string,
   rewards: { name: string; cost: number; requiresApproval: boolean }[],
@@ -349,6 +378,12 @@ export const markAllNotificationsRead = () =>
 
 export const verifyParentPin = (pin: string) =>
   unwrap<ParentPinResult>(api.post("/parent-pin/verify", { pin }));
+
+export const setParentPinDuringSetup = (newPin: string) =>
+  unwrap(api.patch("/parent-pin/setup", { newPin }));
+
+export const changeParentPin = (pin: string, newPin: string) =>
+  unwrap(api.patch("/parent-pin/change", { pin, newPin }));
 
 /* ===================================================================
    Calendar

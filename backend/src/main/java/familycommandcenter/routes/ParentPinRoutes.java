@@ -26,6 +26,18 @@ public final class ParentPinRoutes {
             }
         });
 
+        api.patch("/api/parent-pin/setup", ctx -> {
+            ParentPinRequest request = ctx.bodyAsClass(ParentPinRequest.class);
+
+            boolean changed = parentPinService.setParentPinDuringSetup(request.getNewPin());
+
+            if (changed) {
+                ctx.status(200).json(Map.of("changed", true));
+            } else {
+                ctx.status(400).json(Map.of("changed", false));
+            }
+        });
+
         api.patch("/api/parent-pin/change", ctx -> {
             ParentPinRequest request = ctx.bodyAsClass(ParentPinRequest.class);
 
