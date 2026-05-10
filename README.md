@@ -54,6 +54,7 @@ Make sure PostgreSQL is running and `application.properties` is configured.
 cd frontend
 npm install
 npx expo start
+or npx expo start --lan -c for phone app
 ```
 
 Open in Expo Go or run on an Android emulator.

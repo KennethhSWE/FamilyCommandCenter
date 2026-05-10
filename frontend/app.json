@@ -7,7 +7,6 @@
     "icon": "./app/assets/images/icon.png",
     "scheme": "familycommandcenterapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
       "image": "./app/assets/images/FamilyCommandCenterSplash.png",
       "resizeMode": "cover",
@@ -21,7 +20,6 @@
         "foregroundImage": "./app/assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.anonymous.familycommandcenterapp"
     },
     "web": {
@@ -38,7 +36,9 @@
           "preventAutoHide": true
         }
       ],
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

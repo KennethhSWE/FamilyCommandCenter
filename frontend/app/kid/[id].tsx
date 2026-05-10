@@ -12,6 +12,7 @@ import {
   View,
   TouchableOpacity,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getChoresByKid, requestChoreApproval, Chore } from "../../src/lib/api";
 
@@ -56,65 +57,83 @@ export default function KidChoresScreen() {
   };
 
   /* ------------------ render branches ------------------ */
-  if (loading) return <ActivityIndicator size="large" style={{ flex: 1 }} />;
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!chores.length) {
     return (
-      <View style={styles.center}>
-        <Text style={{ fontSize: 18, color: "#666" }}>
-          🎉 All chores done for today!
-        </Text>
-      </View>
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.center}>
+          <Text style={styles.emptyText}>🎉 All chores done for today!</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   /* ------------------ main list ------------------ */
   return (
-    <FlatList
-      contentContainerStyle={{ padding: 16 }}
-      data={chores}
-      keyExtractor={(c) => String(c.id)}
-      renderItem={({ item }) => (
-        <View
-          style={[
-            styles.card,
-            item.overdue && styles.cardOverdue,
-            item.complete && styles.cardDone,
-          ]}
-        >
-          <View style={styles.left}>
-            <Text
-              style={[styles.name, item.overdue && styles.nameOverdue]}
-              numberOfLines={2}
-            >
-              {item.name}
-            </Text>
-            <Text style={[styles.points, item.overdue && styles.nameOverdue]}>
-              {item.points} pts
-            </Text>
-          </View>
+    <SafeAreaView style={styles.screen}>
+      <FlatList
+        contentContainerStyle={styles.listContent}
+        data={chores}
+        keyExtractor={(c) => String(c.id)}
+        renderItem={({ item }) => (
+          <View
+            style={[
+              styles.card,
+              item.overdue && styles.cardOverdue,
+              item.complete && styles.cardDone,
+            ]}
+          >
+            <View style={styles.left}>
+              <Text
+                style={[styles.name, item.overdue && styles.nameOverdue]}
+                numberOfLines={2}
+              >
+                {item.name}
+              </Text>
+              <Text style={[styles.points, item.overdue && styles.nameOverdue]}>
+                {item.points} pts
+              </Text>
+            </View>
 
-          {item.complete ? (
-            <Text style={styles.doneBadge}>Done</Text>
-          ) : item.requestedComplete ? (
-            <Text style={styles.waitingBadge}>Waiting for Parent</Text>
-          ) : (
-            <TouchableOpacity
-              onPress={() => askParentToCheckChore(item.id)}
-              style={styles.completeBtn}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.completeTxt}>I Did It</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-    />
+            {item.complete ? (
+              <Text style={styles.doneBadge}>Done</Text>
+            ) : item.requestedComplete ? (
+              <Text style={styles.waitingBadge}>Waiting for Parent</Text>
+            ) : (
+              <TouchableOpacity
+                onPress={() => askParentToCheckChore(item.id)}
+                style={styles.completeBtn}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.completeTxt}>I Did It</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      />
+    </SafeAreaView>
   );
 }
 
 /* ------------------------ styles ------------------------ */
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#f3f4f6",
+  },
+  listContent: {
+    padding: 16,
+    paddingTop: 20,
+  },
   center: {
     flex: 1,
     alignItems: "center",
@@ -166,5 +185,10 @@ const styles = StyleSheet.create({
     color: "#f39c12",
     fontWeight: "700",
     alignSelf: "center",
+  },
+  emptyText: {
+    fontSize: 18,
+    color: "#666",
+    textAlign: "center",
   },
 });

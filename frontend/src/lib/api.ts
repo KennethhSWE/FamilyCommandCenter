@@ -1,11 +1,31 @@
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import Constants from "expo-constants";
 import { getToken } from "./auth";
 
 /* ===================================================================
    Axios setup
    =================================================================== */
 
-const BASE_URL = "http://10.0.2.2:7070/api";
+const getBackendHost = () => {
+  const expoStuff = Constants as any;
+
+  const hostUri =
+    expoStuff.expoConfig?.hostUri ??
+    expoStuff.manifest?.debuggerHost ??
+    expoStuff.manifest2?.extra?.expoGo?.debuggerHost;
+
+  if (typeof hostUri === "string" && hostUri.length > 0) {
+    return hostUri.split(":")[0];
+  }
+
+  // Fallback for phone testing.
+  // If Expo shows a different Metro IP, change this to match it.
+  return "10.0.0.103";
+};
+
+const BASE_URL = `http://${getBackendHost()}:7070/api`;
+
+console.log("[API] BASE_URL", BASE_URL);
 
 export const api = axios.create({
   baseURL: BASE_URL,
