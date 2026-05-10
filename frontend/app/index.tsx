@@ -1,39 +1,35 @@
 import { Redirect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 
-import { getToken, getHouseholdId } from "../src/lib/auth";
-import SplashAnimation from "./components/SplashAnimation";
-import "react-native-get-random-values";
+import { getToken } from "../src/lib/auth";
 
-type Dest = "/(tabs)/kids" | "/register";
-
-export default function Index() {
-  const [dest, setDest] = useState<Dest | null>(null);
-  const [ready, setReady] = useState(false);
+export default function AppLauncher() {
+  const [checkingAppGoblin, setCheckingAppGoblin] = useState(true);
+  const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [token, householdId] = await Promise.all([
-          getToken(),
-          getHouseholdId(),
-        ]);
+    const checkStoredSession = async () => {
+      const token = await getToken();
 
-        setDest(token && householdId ? "/(tabs)/kids" : "/register");
-      } catch (err) {
-        console.error("Startup check failed:", err);
-        setDest("/register");
-      }
-    })();
+      setHasToken(!!token);
+      setCheckingAppGoblin(false);
+    };
+
+    checkStoredSession();
   }, []);
 
-  const handleSplashFinish = useCallback(() => {
-    setReady(true);
-  }, []);
-
-  if (!ready || dest === null) {
-    return <SplashAnimation onFinish={handleSplashFinish} />;
+  if (checkingAppGoblin) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
-  return <Redirect href={dest} />;
+  if (hasToken) {
+    return <Redirect href="/(tabs)/kids" />;
+  }
+
+  return <Redirect href="/register" />;
 }

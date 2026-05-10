@@ -14,8 +14,8 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     try {
       const res = await api.post<{ token: string }>("/login", {
-        username,
-        pin,
+        username: username.trim(),
+        pin: pin.trim(),
       });
 
       await saveToken(res.data.token);
@@ -44,7 +44,7 @@ export default function LoginScreen() {
       <TextInput
         placeholder="4-digit PIN"
         value={pin}
-        onChangeText={setPin}
+        onChangeText={(value) => setPin(value.replace(/\D/g, "").slice(0, 4))}
         secureTextEntry
         keyboardType="number-pad"
         maxLength={4}
