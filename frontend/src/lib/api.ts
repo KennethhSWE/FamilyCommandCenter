@@ -170,13 +170,17 @@ export interface FamilyCalendarEntry {
   type: CalendarEntryType;
   entryDate: string;
   paid: boolean;
-  createdAt: string;
+  amount?: number | null;
+  notes?: string | null;
+  createdAt?: string;
 }
 
 export interface CreateCalendarEntryRequest {
   title: string;
   type: CalendarEntryType;
   entryDate: string;
+  amount?: number | null;
+  notes?: string | null;
 }
 
 export interface PointAdjustmentResult {

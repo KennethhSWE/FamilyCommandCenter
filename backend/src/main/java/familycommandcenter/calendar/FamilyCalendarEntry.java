@@ -1,5 +1,6 @@
 package familycommandcenter.calendar;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -10,6 +11,8 @@ public class FamilyCalendarEntry {
     private CalendarEntryType type;
     private LocalDate entryDate;
     private boolean paid;
+    private BigDecimal amount;
+    private String notes;
     private LocalDateTime createdAt;
 
     public FamilyCalendarEntry() {
@@ -22,13 +25,16 @@ public class FamilyCalendarEntry {
             CalendarEntryType type,
             LocalDate entryDate,
             boolean paid,
+            BigDecimal amount,
+            String notes,
             LocalDateTime createdAt) {
-
         this.id = id;
         this.title = title;
         this.type = type;
         this.entryDate = entryDate;
         this.paid = paid;
+        this.amount = amount;
+        this.notes = notes;
         this.createdAt = createdAt;
     }
 
@@ -50,6 +56,14 @@ public class FamilyCalendarEntry {
 
     public boolean isPaid() {
         return paid;
+    }
+
+    public BigDecimal getAmount() {
+        return amount;
+    }
+
+    public String getNotes() {
+        return notes;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -74,6 +88,14 @@ public class FamilyCalendarEntry {
 
     public void setPaid(boolean paid) {
         this.paid = paid;
+    }
+
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {

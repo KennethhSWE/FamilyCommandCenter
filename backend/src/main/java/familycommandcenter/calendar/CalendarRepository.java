@@ -27,6 +27,8 @@ public class CalendarRepository {
                     entry_type VARCHAR(20) NOT NULL,
                     entry_date DATE NOT NULL,
                     paid BOOLEAN NOT NULL DEFAULT FALSE,
+                    amount NUMERIC(10, 2),
+                    notes TEXT,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """;
@@ -35,6 +37,19 @@ public class CalendarRepository {
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.executeUpdate();
+        }
+
+        String[] columnFixes = {
+                "ALTER TABLE calendar_entries ADD COLUMN IF NOT EXISTS amount NUMERIC(10, 2)",
+                "ALTER TABLE calendar_entries ADD COLUMN IF NOT EXISTS notes TEXT"
+        };
+
+        try (Connection connection = dataSource.getConnection()) {
+            for (String fixSql : columnFixes) {
+                try (PreparedStatement ps = connection.prepareStatement(fixSql)) {
+                    ps.executeUpdate();
+                }
+            }
         }
     }
 
@@ -89,9 +104,11 @@ public class CalendarRepository {
                     title,
                     entry_type,
                     entry_date,
-                    paid
+                    paid,
+                    amount,
+                    notes
                 )
-                VALUES (?, ?, ?, FALSE)
+                VALUES (?, ?, ?, FALSE, ?, ?)
                 RETURNING *
                 """;
 
@@ -101,6 +118,8 @@ public class CalendarRepository {
             ps.setString(1, request.getTitle().trim());
             ps.setString(2, request.getType().name());
             ps.setDate(3, Date.valueOf(request.getEntryDate()));
+            ps.setBigDecimal(4, request.getAmount());
+            ps.setString(5, cleanNotes(request.getNotes()));
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -151,6 +170,16 @@ public class CalendarRepository {
                 CalendarEntryType.valueOf(rs.getString("entry_type")),
                 rs.getDate("entry_date").toLocalDate(),
                 rs.getBoolean("paid"),
+                rs.getBigDecimal("amount"),
+                rs.getString("notes"),
                 createdAt != null ? createdAt.toLocalDateTime() : null);
+    }
+
+    private String cleanNotes(String notes) {
+        if (notes == null || notes.isBlank()) {
+            return null;
+        }
+
+        return notes.trim();
     }
 }
