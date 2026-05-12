@@ -1,163 +1,180 @@
 // frontend/app/(tabs)/kids.tsx
 //--------------------------------------------------------------
-//  Kids tab – fetch household kids & display them in a carousel
+//  Kids tab – family dashboard for choosing a child
 //--------------------------------------------------------------
-import React, { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
   RefreshControl,
   StyleSheet,
+  Text,
   View,
-  useColorScheme,
-  ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
-import Carousel from "react-native-reanimated-carousel";
-import * as Haptics from "expo-haptics";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getKidsByHousehold, Kid } from "../../src/lib/api";
 import { getHouseholdId } from "../../src/lib/auth";
 import KidCard from "../components/KidCard";
 
-/* ───────────────────────── constants ───────────────────────── */
-const { width, height } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.9;
-const CARD_HEIGHT = height * 0.75;
+const screenWidth = Dimensions.get("window").width;
 
-/* ───────────────────────── component ───────────────────────── */
+const getGridSettings = () => {
+  const isTablet = screenWidth >= 560; // change for screen width of tablet
+  const columns = isTablet ? 2 : 1;
+  const screenPadding = 16;
+  const cardGap = 14;
+
+  const cardWidth =
+    columns === 2
+      ? (screenWidth - screenPadding * 2 - cardGap) / 2
+      : screenWidth - screenPadding * 2;
+
+  const cardHeight = isTablet ? 260 : 300;
+
+  return {
+    columns,
+    cardWidth,
+    cardHeight,
+  };
+};
+
 export default function KidsTab() {
   const router = useRouter();
-  const scheme = useColorScheme();
-  const colors =
-    scheme === "dark"
-      ? { bg: "#000", loader: "#888" }
-      : { bg: "#FFF", loader: "#444" };
 
   const [kids, setKids] = useState<Kid[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [focused, setFocused] = useState(0);
 
-  /* ---------------------- data fetcher ---------------------- */
+  const grid = useMemo(() => getGridSettings(), []);
+
   const loadKids = useCallback(async () => {
     try {
-      const hh = await getHouseholdId();
-      if (!hh) {
-        // No household yet → bounce to register
-        router.replace("/register");
+      const householdId = await getHouseholdId();
+
+      if (!householdId) {
+        router.replace("/setup/parent" as any);
         return;
       }
-      const list = await getKidsByHousehold(hh);
+
+      const list = await getKidsByHousehold(householdId);
       setKids(list);
 
-      // If household exists but has no kids, go to onboarding
       if (!list || list.length === 0) {
-        router.replace("/onboarding/AddKidsScreen");
+        router.replace("/setup/kids" as any);
         return;
       }
-    } catch (e) {
-      console.error("Failed to load kids:", e);
+    } catch (error) {
+      console.error("Failed to load kids:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [router]);
 
-  // Refetch whenever this tab/screen gains focus (also runs on first mount)
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
       loadKids();
-      // no cleanup needed
     }, [loadKids]),
   );
 
-  /* ------------------------ UI states ----------------------- */
+  const openKidChores = (kid: Kid) => {
+    router.push({
+      pathname: "/kid/[id]",
+      params: { id: kid.username },
+    });
+  };
+
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: colors.bg }]}>
-        <ActivityIndicator size="large" color={colors.loader} />
-      </View>
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" />
+        </View>
+      </SafeAreaView>
     );
   }
 
-  if (!kids.length) {
-    return (
-      <View style={[styles.center, { backgroundColor: colors.bg }]}>
-        <KidCard
-          data={{
-            id: 0,
-            username: "none",
-            name: "No kids yet",
-            age: 0,
-            role: "kid" as const,
-          }}
-          width={CARD_WIDTH}
-          onPress={() => {}}
-        />
-      </View>
-    );
-  }
-
-  /* ------------------------ main UI ------------------------ */
   return (
-    <ScrollView
-      contentContainerStyle={[styles.container, { backgroundColor: colors.bg }]}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => {
-            setRefreshing(true);
-            loadKids();
-          }}
-        />
-      }
-    >
-      <Carousel
+    <SafeAreaView style={styles.screen}>
+      <FlatList
+        key={grid.columns}
         data={kids}
-        width={CARD_WIDTH}
-        height={CARD_HEIGHT}
-        loop
-        onSnapToItem={(idx) => {
-          setFocused(idx);
-          Haptics.selectionAsync(); // subtle tick
-        }}
-        mode="parallax"
-        modeConfig={{
-          parallaxScrollingScale: 0.9,
-          parallaxScrollingOffset: 60,
-          parallaxAdjacentItemScale: 0.8,
-        }}
-        renderItem={({ item, index }) => (
-          <KidCard
-            data={item}
-            width={CARD_WIDTH}
-            isCentered={index === focused}
-            onPress={() =>
-              router.push({
-                pathname: "/kid/[id]",
-                params: { id: item.username },
-              })
-            }
+        numColumns={grid.columns}
+        keyExtractor={(kid) => String(kid.id ?? kid.username)}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadKids();
+            }}
           />
+        }
+        ListHeaderComponent={
+          <View style={styles.headerBox}>
+            <Text style={styles.header}>Family Dashboard</Text>
+            <Text style={styles.subtitle}>
+              Tap your card to see today&apos;s chores.
+            </Text>
+          </View>
+        }
+        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={grid.columns > 1 ? styles.columnWrapper : undefined}
+        renderItem={({ item }) => (
+          <View style={styles.cardSlot}>
+            <KidCard
+              data={item}
+              width={grid.cardWidth}
+              height={grid.cardHeight}
+              isCentered
+              onPress={() => openKidChores(item)}
+            />
+          </View>
         )}
       />
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
-/* ───────────────────────── styles ───────────────────────── */
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#f3f4f6",
+  },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  container: {
-    flexGrow: 1,
+  listContent: {
+    padding: 16,
+    paddingBottom: 120,
+  },
+  headerBox: {
+    marginBottom: 18,
     alignItems: "center",
-    justifyContent: "center",
+  },
+  header: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#111827",
+    textAlign: "center",
+  },
+  subtitle: {
+    marginTop: 6,
+    fontSize: 16,
+    color: "#6b7280",
+    textAlign: "center",
+  },
+  columnWrapper: {
+    gap: 14,
+  },
+  cardSlot: {
+    marginBottom: 14,
   },
 });

@@ -157,13 +157,16 @@ public class ChoreRepository {
         return findChores(sql);
     }
 
-    public List<ChoreCard> findIncompleteChoresForKid(String username) throws SQLException {
+    public List<ChoreCard> findChoresForKidDashboard(String username) throws SQLException {
         String sql = """
                 SELECT *
                 FROM chores
                 WHERE assigned_to = ?
-                AND is_complete = FALSE
-                ORDER BY due_date ASC, name ASC
+                AND (
+                    due_date = CURRENT_DATE
+                    OR (due_date < CURRENT_DATE AND is_complete = FALSE)
+                )
+                ORDER BY is_complete ASC, requested_complete ASC, due_date ASC, name ASC
                 """;
 
         try (Connection connection = dataSource.getConnection();

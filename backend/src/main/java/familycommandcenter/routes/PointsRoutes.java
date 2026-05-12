@@ -1,5 +1,7 @@
 package familycommandcenter.routes;
 
+import familycommandcenter.points.PointAdjustmentRequest;
+import familycommandcenter.points.PointAdjustmentResult;
 import familycommandcenter.points.PointsService;
 import io.javalin.Javalin;
 
@@ -25,6 +27,21 @@ public final class PointsRoutes {
             } catch (Exception e) {
                 e.printStackTrace();
                 ctx.status(500).result("Server error fetching points");
+            }
+        });
+
+        api.post("/api/points/adjust", ctx -> {
+            try {
+                PointAdjustmentRequest request = ctx.bodyAsClass(PointAdjustmentRequest.class);
+
+                PointAdjustmentResult result = pointsService.parentAdjustsPoints(request);
+
+                ctx.json(result);
+            } catch (IllegalArgumentException e) {
+                ctx.status(400).json(Map.of("message", e.getMessage()));
+            } catch (Exception e) {
+                e.printStackTrace();
+                ctx.status(500).result("Server error adjusting points");
             }
         });
     }

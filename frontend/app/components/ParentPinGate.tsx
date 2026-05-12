@@ -85,8 +85,6 @@ export default function ParentPinGate({
             {checking ? "Checking..." : "Unlock"}
           </Text>
         </Pressable>
-
-        <Text style={styles.hint}>Starter PIN is 1234 for now.</Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -143,11 +141,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "800",
     fontSize: 16,
-  },
-  hint: {
-    marginTop: 14,
-    textAlign: "center",
-    color: "#888",
-    fontSize: 12,
   },
 });

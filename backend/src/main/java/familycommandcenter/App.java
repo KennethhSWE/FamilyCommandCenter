@@ -14,6 +14,7 @@ import familycommandcenter.model.PointsBankDAO;
 import familycommandcenter.calendar.CalendarRepository;
 import familycommandcenter.calendar.CalendarService;
 import familycommandcenter.routes.CalendarRoutes;
+import familycommandcenter.points.PointTransactionRepository;
 import familycommandcenter.model.UserDAO;
 import familycommandcenter.notifications.NotificationRepository;
 import familycommandcenter.notifications.NotificationService;
@@ -44,11 +45,16 @@ public final class App {
         UserDAO userDAO = new UserDAO(ds);
         PointsBankDAO pointsDAO = new PointsBankDAO(ds);
 
+        PointTransactionRepository pointTransactionRepository = new PointTransactionRepository(ds);
+        pointTransactionRepository.makeSureTableExists();
+
         ParentPinRepository parentPinRepository = new ParentPinRepository(ds);
         ParentPinService parentPinService = new ParentPinService(parentPinRepository);
         parentPinService.makeSureStarterPinExists();
 
-        PointsService pointsService = new PointsService(pointsDAO);
+        PointsService pointsService = new PointsService(
+                pointsDAO,
+                pointTransactionRepository);
 
         NotificationRepository notificationRepository = new NotificationRepository(ds);
         NotificationService notificationService = new NotificationService(notificationRepository);

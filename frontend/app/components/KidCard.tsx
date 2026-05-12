@@ -25,6 +25,7 @@ export interface Kid {
 interface KidCardProps {
   data: Kid;
   width: number;
+  height?: number;
   onPress: () => void;
   isCentered?: boolean;
 }
@@ -36,6 +37,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 export default function KidCard({
   data,
   width,
+  height,
   onPress,
   isCentered = false,
 }: KidCardProps) {
@@ -91,7 +93,7 @@ export default function KidCard({
     <TouchableOpacity
       activeOpacity={0.85}
       onPress={handlePress}
-      style={{ width }}
+      style={{ width, height }}
     >
       <LinearGradient
         colors={isCentered ? ["#FFFFFF", "#F2F6FF"] : ["#FFF", "#FFF"]}
@@ -127,6 +129,8 @@ export default function KidCard({
 
         <Text style={styles.name}>{data.name}</Text>
         <Text style={styles.points}>{points} pts</Text>
+
+        <Text style={styles.tapText}>Tap to view chores</Text>
 
         {data.role === "parent" && <Text style={styles.adminBadge}>Admin</Text>}
       </LinearGradient>
@@ -185,5 +189,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+  },
+  tapText: {
+    marginTop: 10,
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#2563eb",
   },
 });

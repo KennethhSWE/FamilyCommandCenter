@@ -1,194 +1,446 @@
 // frontend/app/kid/[id].tsx
 //--------------------------------------------------------------
-//  Kid detail – shows today’s chores for the selected child
+// Kid detail – shows today’s chores for the selected child
 //--------------------------------------------------------------
-import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
-  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getChoresByKid, requestChoreApproval, Chore } from "../../src/lib/api";
 
 export default function KidChoresScreen() {
-  // Carousel passes ?id=<username>
+  const router = useRouter();
+
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const username = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [chores, setChores] = useState<Chore[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [workingChoreId, setWorkingChoreId] = useState<number | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        if (username) {
-          const list = await getChoresByKid(username);
-          setChores(list);
-        }
-      } catch (e) {
-        console.error("Failed to load chores:", e);
-      } finally {
-        setLoading(false);
-      }
-    })();
+  const loadChores = useCallback(async () => {
+    if (!username) {
+      setChores([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    try {
+      const list = await getChoresByKid(username);
+      setChores(list);
+    } catch (error) {
+      console.error("Failed to load chores:", error);
+      Alert.alert("Error", "Could not load chores.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [username]);
 
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadChores();
+    }, [loadChores]),
+  );
+
   const askParentToCheckChore = async (id: number) => {
-    // Optimistic update: kid asked for approval, but did not earn points yet.
-    setChores((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, requestedComplete: true } : c)),
+    setWorkingChoreId(id);
+
+    setChores((currentChores) =>
+      currentChores.map((chore) =>
+        chore.id === id ? { ...chore, requestedComplete: true } : chore,
+      ),
     );
 
     try {
       await requestChoreApproval(id);
-    } catch (e) {
-      console.error("Request approval failed:", e);
+    } catch (error) {
+      console.error("Request approval failed:", error);
 
-      setChores((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, requestedComplete: false } : c)),
+      setChores((currentChores) =>
+        currentChores.map((chore) =>
+          chore.id === id ? { ...chore, requestedComplete: false } : chore,
+        ),
       );
+
+      Alert.alert(
+        "Could Not Submit",
+        "Ask a parent to check this chore again.",
+      );
+    } finally {
+      setWorkingChoreId(null);
     }
   };
 
-  /* ------------------ render branches ------------------ */
+  const finishedCount = chores.filter((chore) => chore.complete).length;
+  const waitingCount = chores.filter(
+    (chore) => !chore.complete && chore.requestedComplete,
+  ).length;
+  const openCount = chores.filter(
+    (chore) => !chore.complete && !chore.requestedComplete,
+  ).length;
+
   if (loading) {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.center}>
           <ActivityIndicator size="large" />
+          <Text style={styles.loadingText}>Loading chores...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!chores.length) {
-    return (
-      <SafeAreaView style={styles.screen}>
-        <View style={styles.center}>
-          <Text style={styles.emptyText}>🎉 All chores done for today!</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  /* ------------------ main list ------------------ */
   return (
     <SafeAreaView style={styles.screen}>
       <FlatList
-        contentContainerStyle={styles.listContent}
         data={chores}
-        keyExtractor={(c) => String(c.id)}
-        renderItem={({ item }) => (
-          <View
-            style={[
-              styles.card,
-              item.overdue && styles.cardOverdue,
-              item.complete && styles.cardDone,
-            ]}
-          >
-            <View style={styles.left}>
-              <Text
-                style={[styles.name, item.overdue && styles.nameOverdue]}
-                numberOfLines={2}
-              >
-                {item.name}
-              </Text>
-              <Text style={[styles.points, item.overdue && styles.nameOverdue]}>
-                {item.points} pts
-              </Text>
-            </View>
+        keyExtractor={(chore) => String(chore.id)}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadChores();
+            }}
+          />
+        }
+        ListHeaderComponent={
+          <View style={styles.headerBox}>
+            <Pressable style={styles.backButton} onPress={() => router.back()}>
+              <Text style={styles.backButtonText}>Back</Text>
+            </Pressable>
 
-            {item.complete ? (
-              <Text style={styles.doneBadge}>Done</Text>
-            ) : item.requestedComplete ? (
-              <Text style={styles.waitingBadge}>Waiting for Parent</Text>
-            ) : (
-              <TouchableOpacity
-                onPress={() => askParentToCheckChore(item.id)}
-                style={styles.completeBtn}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.completeTxt}>I Did It</Text>
-              </TouchableOpacity>
-            )}
+            <Text style={styles.header}>
+              {username ? `${username}'s Chores` : "Chores"}
+            </Text>
+
+            <Text style={styles.subtitle}>
+              Mark chores done when finished. A parent approves points.
+            </Text>
+
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryNumber}>{openCount}</Text>
+                <Text style={styles.summaryLabel}>Open</Text>
+              </View>
+
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryNumber}>{waitingCount}</Text>
+                <Text style={styles.summaryLabel}>Waiting</Text>
+              </View>
+
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryNumber}>{finishedCount}</Text>
+                <Text style={styles.summaryLabel}>Done</Text>
+              </View>
+            </View>
           </View>
-        )}
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyEmoji}>🎉</Text>
+            <Text style={styles.emptyTitle}>All chores done for today!</Text>
+            <Text style={styles.emptyText}>
+              Check back later or ask a parent if there is anything else to help
+              with.
+            </Text>
+          </View>
+        }
+        contentContainerStyle={styles.listContent}
+        renderItem={({ item }) => {
+          const isWorking = workingChoreId === item.id;
+
+          return (
+            <View
+              style={[
+                styles.card,
+                item.overdue && styles.cardOverdue,
+                item.complete && styles.cardDone,
+              ]}
+            >
+              <View style={styles.cardTopRow}>
+                <View style={styles.choreTextBox}>
+                  <Text
+                    style={[
+                      styles.name,
+                      item.overdue && styles.overdueText,
+                      item.complete && styles.doneText,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {item.name}
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.points,
+                      item.overdue && styles.overdueText,
+                      item.complete && styles.doneText,
+                    ]}
+                  >
+                    {item.points} points
+                  </Text>
+                </View>
+
+                {item.complete ? (
+                  <View style={[styles.statusPill, styles.donePill]}>
+                    <Text style={[styles.statusPillText, styles.donePillText]}>
+                      Done
+                    </Text>
+                  </View>
+                ) : item.requestedComplete ? (
+                  <View style={[styles.statusPill, styles.waitingPill]}>
+                    <Text
+                      style={[styles.statusPillText, styles.waitingPillText]}
+                    >
+                      Waiting
+                    </Text>
+                  </View>
+                ) : item.overdue ? (
+                  <View style={[styles.statusPill, styles.overduePill]}>
+                    <Text
+                      style={[styles.statusPillText, styles.overduePillText]}
+                    >
+                      Overdue
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[styles.statusPill, styles.openPill]}>
+                    <Text style={[styles.statusPillText, styles.openPillText]}>
+                      Open
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {!item.complete && !item.requestedComplete && (
+                <Pressable
+                  onPress={() => askParentToCheckChore(item.id)}
+                  style={[
+                    styles.completeButton,
+                    isWorking && styles.disabledButton,
+                  ]}
+                  disabled={isWorking}
+                >
+                  <Text style={styles.completeButtonText}>
+                    {isWorking ? "Sending..." : "I Did It"}
+                  </Text>
+                </Pressable>
+              )}
+
+              {item.requestedComplete && !item.complete && (
+                <Text style={styles.waitingMessage}>
+                  Nice job. This is waiting for parent approval.
+                </Text>
+              )}
+            </View>
+          );
+        }}
       />
     </SafeAreaView>
   );
 }
 
-/* ------------------------ styles ------------------------ */
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#f3f4f6",
-  },
-  listContent: {
-    padding: 16,
-    paddingTop: 20,
   },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
+  loadingText: {
+    marginTop: 10,
+    color: "#6b7280",
+    fontWeight: "700",
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 120,
+  },
+  headerBox: {
+    marginBottom: 16,
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    backgroundColor: "#e5e7eb",
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  backButtonText: {
+    color: "#111827",
+    fontWeight: "900",
+  },
+  header: {
+    fontSize: 30,
+    fontWeight: "900",
+    color: "#111827",
+    textAlign: "center",
+  },
+  subtitle: {
+    color: "#6b7280",
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 12,
+    alignItems: "center",
+    elevation: 2,
+  },
+  summaryNumber: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#2563eb",
+  },
+  summaryLabel: {
+    color: "#6b7280",
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  emptyCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 24,
+    alignItems: "center",
+    elevation: 2,
+  },
+  emptyEmoji: {
+    fontSize: 42,
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#111827",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  emptyText: {
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 20,
+  },
   card: {
     padding: 16,
     backgroundColor: "#fff",
-    borderRadius: 14,
+    borderRadius: 18,
     marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
   },
   cardOverdue: {
-    backgroundColor: "#331111",
+    backgroundColor: "#fff1f2",
+    borderWidth: 1,
+    borderColor: "#fecdd3",
   },
   cardDone: {
-    opacity: 0.7,
+    opacity: 0.75,
   },
-  left: { flex: 1, paddingRight: 12 },
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  choreTextBox: {
+    flex: 1,
+  },
   name: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#111",
+    fontSize: 19,
+    fontWeight: "900",
+    color: "#111827",
     marginBottom: 4,
-  },
-  nameOverdue: {
-    color: "#ff6666",
   },
   points: {
     color: "#4b5563",
-    fontWeight: "500",
+    fontWeight: "800",
   },
-  completeBtn: {
+  overdueText: {
+    color: "#991b1b",
+  },
+  doneText: {
+    color: "#6b7280",
+    textDecorationLine: "line-through",
+  },
+  statusPill: {
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  openPill: {
+    backgroundColor: "#dbeafe",
+  },
+  openPillText: {
+    color: "#1e40af",
+  },
+  waitingPill: {
+    backgroundColor: "#fef3c7",
+  },
+  waitingPillText: {
+    color: "#92400e",
+  },
+  donePill: {
+    backgroundColor: "#dcfce7",
+  },
+  donePillText: {
+    color: "#166534",
+  },
+  overduePill: {
+    backgroundColor: "#fee2e2",
+  },
+  overduePillText: {
+    color: "#991b1b",
+  },
+  completeButton: {
     backgroundColor: "#22c55e",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 14,
+    padding: 14,
+    alignItems: "center",
+    marginTop: 14,
   },
-  completeTxt: { color: "#fff", fontWeight: "700" },
-  doneBadge: { color: "#16a34a", fontWeight: "700" },
-  waitingBadge: {
-    color: "#f39c12",
-    fontWeight: "700",
-    alignSelf: "center",
+  completeButtonText: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 16,
   },
-  emptyText: {
-    fontSize: 18,
-    color: "#666",
-    textAlign: "center",
+  disabledButton: {
+    opacity: 0.6,
+  },
+  waitingMessage: {
+    marginTop: 12,
+    color: "#92400e",
+    fontWeight: "800",
+    lineHeight: 20,
   },
 });

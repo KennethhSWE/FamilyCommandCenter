@@ -78,6 +78,13 @@ export interface CreateHouseholdResult {
   householdId: string;
 }
 
+export interface DailyChoreSummary {
+  kidsChecked: number;
+  carriedOverChores: number;
+  penaltyPointsTaken: number;
+  newChoresAssigned: number;
+}
+
 export interface Chore {
   id: number;
   name: string;
@@ -106,6 +113,15 @@ export interface Reward {
   name: string;
   cost: number;
   requiresApproval: boolean;
+}
+
+export interface RewardRedeemResult {
+  status:
+    | "AUTO_APPROVED"
+    | "WAITING_FOR_PARENT"
+    | "NOT_ENOUGH_POINTS"
+    | "NOT_FOUND";
+  message: string;
 }
 
 export interface ParentPinResult {
@@ -223,6 +239,9 @@ export const addKidsToHousehold = (
       kids,
     }),
   );
+
+export const runDailyChoreSweep = () =>
+  unwrap<DailyChoreSummary>(api.post("/assign/daily"));
 
 /* ===================================================================
    Kids / Family
@@ -352,7 +371,9 @@ export const createRewardBulk = (
 ) => unwrap(api.post("/rewards/bulk", rewards));
 
 export const redeemReward = (rewardId: number, username: string) =>
-  unwrap(api.post("/rewards/redeem", { rewardId, username }));
+  unwrap<RewardRedeemResult>(
+    api.post("/rewards/redeem", { rewardId, username }),
+  );
 
 export const approveRewardRedemption = (redemptionId: number) =>
   unwrap(api.patch(`/rewards/approve/${redemptionId}`));

@@ -51,7 +51,7 @@ public class ChoreService {
     }
 
     public List<ChoreCard> getChoresForKid(String username) throws SQLException {
-        return choreRepository.findIncompleteChoresForKid(username);
+        return choreRepository.findChoresForKidDashboard(username);
     }
 
     public boolean kidSaysChoreIsDone(int choreId) throws SQLException {
