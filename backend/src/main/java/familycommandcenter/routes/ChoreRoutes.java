@@ -4,27 +4,33 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import familycommandcenter.chores.ChoreService;
 import familycommandcenter.chores.CreateChoreRequest;
+import familycommandcenter.util.AuthContext;
 import io.javalin.Javalin;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public final class ChoreRoutes {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private ChoreRoutes() {
-        // utility class
+        // Utility class
     }
 
     public static void register(Javalin api, ChoreService choreService) {
 
         api.post("/api/chores/bulk", ctx -> {
+            AuthContext.requireParent(ctx);
+
             try {
                 List<CreateChoreRequest> chores = JSON.readValue(ctx.body(), new TypeReference<>() {
                 });
 
-                choreService.addChores(chores);
+                UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+                choreService.addChores(chores, householdId);
 
                 ctx.status(201).json(Map.of("saved", chores.size()));
             } catch (Exception e) {
@@ -35,36 +41,78 @@ public final class ChoreRoutes {
             }
         });
 
-        api.get("/api/chores", ctx -> ctx.json(choreService.getAllChores()));
+        api.get("/api/chores", ctx -> {
+            AuthContext.requireParent(ctx);
 
-        api.get("/api/chores/pending", ctx -> ctx.json(choreService.getPendingApprovals()));
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
 
-        api.get("/api/chores/today", ctx -> ctx.json(choreService.getChoresDueToday()));
+            ctx.json(choreService.getAllChores(householdId));
+        });
 
-        api.get("/api/chores/overdue", ctx -> ctx.json(choreService.getOverdueChores()));
+        api.get("/api/chores/pending", ctx -> {
+            AuthContext.requireParent(ctx);
+
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+            ctx.json(choreService.getPendingApprovals(householdId));
+        });
+
+        api.get("/api/chores/today", ctx -> {
+            AuthContext.requireParent(ctx);
+
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+            ctx.json(choreService.getChoresDueToday(householdId));
+        });
+
+        api.get("/api/chores/overdue", ctx -> {
+            AuthContext.requireParent(ctx);
+
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+            ctx.json(choreService.getOverdueChores(householdId));
+        });
 
         api.get("/api/chores/kid/{username}", ctx -> {
+            AuthContext.requireUser(ctx);
+
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
             String username = ctx.pathParam("username");
-            ctx.json(choreService.getChoresForKid(username));
+
+            ctx.json(choreService.getChoresForKid(username, householdId));
         });
 
         api.post("/api/chores", ctx -> {
+            AuthContext.requireParent(ctx);
+
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
+
             CreateChoreRequest chore = ctx.bodyAsClass(CreateChoreRequest.class);
-            choreService.addChore(chore);
+
+            choreService.addChore(chore, householdId);
+
             ctx.status(201).json(Map.of("created", true));
         });
 
         api.delete("/api/chores/{id}", ctx -> {
+            AuthContext.requireParent(ctx);
+
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
             int id = Integer.parseInt(ctx.pathParam("id"));
-            choreService.deleteChoreForNow(id);
+
+            choreService.deleteChoreForNow(id, householdId);
+
             ctx.status(204);
         });
 
         api.patch("/api/chores/{id}/request-complete", ctx -> {
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
             int id = Integer.parseInt(ctx.pathParam("id"));
 
             try {
-                boolean ok = choreService.kidSaysChoreIsDone(id);
+                boolean ok = choreService.kidSaysChoreIsDone(
+                        id,
+                        householdId);
 
                 if (ok) {
                     ctx.status(200).json(Map.of(
@@ -80,10 +128,15 @@ public final class ChoreRoutes {
         });
 
         api.patch("/api/chores/{id}/approve", ctx -> {
+            AuthContext.requireParent(ctx);
+
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
             int id = Integer.parseInt(ctx.pathParam("id"));
 
             try {
-                boolean ok = choreService.parentApprovesChore(id);
+                boolean ok = choreService.parentApprovesChore(
+                        id,
+                        householdId);
 
                 if (ok) {
                     ctx.status(200).json(Map.of(
@@ -101,10 +154,15 @@ public final class ChoreRoutes {
         });
 
         api.patch("/api/chores/{id}/reject", ctx -> {
+            AuthContext.requireParent(ctx);
+
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
             int id = Integer.parseInt(ctx.pathParam("id"));
 
             try {
-                boolean ok = choreService.parentRejectsChore(id);
+                boolean ok = choreService.parentRejectsChore(
+                        id,
+                        householdId);
 
                 if (ok) {
                     ctx.status(200).json(Map.of(

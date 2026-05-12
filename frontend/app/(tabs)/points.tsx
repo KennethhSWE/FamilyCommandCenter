@@ -16,13 +16,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  getKidsByHousehold,
+  getKids,
   getPoints,
   getRecentPointTransactions,
   Kid,
   PointTransaction,
 } from "../../src/lib/api";
-import { getHouseholdId } from "../../src/lib/auth";
 
 type KidPointCard = {
   kid: Kid;
@@ -39,16 +38,7 @@ export default function PointsScreen() {
     setRefreshing(true);
 
     try {
-      const householdId = await getHouseholdId();
-
-      if (!householdId) {
-        setScoreboard([]);
-        setPointHistory([]);
-        return;
-      }
-
-      const kids = await getKidsByHousehold(householdId);
-
+      const kids = await getKids();
       const cards = await Promise.all(
         kids.map(async (kid) => {
           const points = await getPoints(kid.username);

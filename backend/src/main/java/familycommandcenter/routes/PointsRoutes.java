@@ -4,9 +4,12 @@ import familycommandcenter.points.PointAdjustmentRequest;
 import familycommandcenter.points.PointAdjustmentResult;
 import familycommandcenter.points.PointsService;
 import familycommandcenter.points.PointTransaction;
+import familycommandcenter.util.AuthContext;
 import io.javalin.Javalin;
-import java.util.Map;
+
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public final class PointsRoutes {
 
@@ -18,7 +21,9 @@ public final class PointsRoutes {
 
         api.get("/api/points/transactions/recent", ctx -> {
             try {
-                List<PointTransaction> transactions = pointsService.getRecentTransactions();
+                UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+                List<PointTransaction> transactions = pointsService.getRecentTransactions(householdId);
 
                 ctx.json(transactions);
             } catch (Exception e) {
@@ -31,7 +36,11 @@ public final class PointsRoutes {
             String username = ctx.pathParam("username");
 
             try {
-                List<PointTransaction> transactions = pointsService.getRecentTransactionsForKid(username);
+                UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+                List<PointTransaction> transactions = pointsService.getRecentTransactionsForKid(
+                        username,
+                        householdId);
 
                 ctx.json(transactions);
             } catch (IllegalArgumentException e) {
@@ -46,7 +55,11 @@ public final class PointsRoutes {
             String username = ctx.pathParam("username");
 
             try {
-                int totalPoints = pointsService.getPoints(username);
+                UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+                int totalPoints = pointsService.getPoints(
+                        username,
+                        householdId);
 
                 ctx.json(Map.of(
                         "user_name", username,
@@ -59,9 +72,15 @@ public final class PointsRoutes {
 
         api.post("/api/points/adjust", ctx -> {
             try {
+                AuthContext.requireParent(ctx);
+
+                UUID householdId = AuthContext.requireHouseholdId(ctx);
+
                 PointAdjustmentRequest request = ctx.bodyAsClass(PointAdjustmentRequest.class);
 
-                PointAdjustmentResult result = pointsService.parentAdjustsPoints(request);
+                PointAdjustmentResult result = pointsService.parentAdjustsPoints(
+                        request,
+                        householdId);
 
                 ctx.json(result);
             } catch (IllegalArgumentException e) {

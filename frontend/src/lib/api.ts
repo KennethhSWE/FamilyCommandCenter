@@ -263,15 +263,17 @@ export const createHousehold = (adminName: string, pin: string) =>
   );
 
 export const addKidsToHousehold = (
-  householdId: string,
+  _householdId: string | undefined,
   kids: SetupKidPayload[],
 ) =>
   unwrap(
     api.post("/household/kids", {
-      householdId,
       kids,
     }),
   );
+
+export const addKids = (kids: SetupKidPayload[]) =>
+  addKidsToHousehold(undefined, kids);
 
 export const runDailyChoreSweep = () =>
   unwrap<DailyChoreSummary>(api.post("/assign/daily"));
@@ -281,7 +283,7 @@ export const runDailyChoreSweep = () =>
    =================================================================== */
 
 export const getKids = async (): Promise<Kid[]> => {
-  const raw = await unwrap<RawKid[]>(api.get("/users/kids"));
+  const raw = await unwrap<RawKid[]>(api.get("/kids"));
 
   return raw.map((kid) => ({
     ...kid,
@@ -290,20 +292,9 @@ export const getKids = async (): Promise<Kid[]> => {
 };
 
 export const getKidsByHousehold = async (
-  householdId: string,
+  _householdId?: string,
 ): Promise<Kid[]> => {
-  if (!householdId) {
-    throw new Error("getKidsByHousehold: missing householdId");
-  }
-
-  const raw = await unwrap<RawKid[]>(
-    api.get(`/kids/${encodeURIComponent(householdId)}`),
-  );
-
-  return raw.map((kid) => ({
-    ...kid,
-    name: kid.username,
-  }));
+  return getKids();
 };
 
 /* ===================================================================
@@ -420,9 +411,13 @@ export const getRewards = async (): Promise<Reward[]> => {
 };
 
 export const createRewardBulk = (
-  _householdId: string,
+  _householdId: string | undefined,
   rewards: { name: string; cost: number; requiresApproval: boolean }[],
 ) => unwrap(api.post("/rewards/bulk", rewards));
+
+export const createRewards = (
+  rewards: { name: string; cost: number; requiresApproval: boolean }[],
+) => createRewardBulk(undefined, rewards);
 
 export const redeemReward = (rewardId: number, username: string) =>
   unwrap<RewardRedeemResult>(

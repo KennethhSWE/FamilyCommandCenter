@@ -6,7 +6,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.Optional;
+import java.util.UUID;
 
 public class RewardSuggestionRepository {
 
@@ -17,7 +19,7 @@ public class RewardSuggestionRepository {
     }
 
     public void makeSureTableExists() throws SQLException {
-        String sql = """
+        String createTable = """
                 CREATE TABLE IF NOT EXISTS reward_suggestions (
                     id SERIAL PRIMARY KEY,
                     suggested_by TEXT NOT NULL,
@@ -26,19 +28,62 @@ public class RewardSuggestionRepository {
                     reason TEXT,
                     status VARCHAR(30) NOT NULL DEFAULT 'WAITING',
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    reviewed_at TIMESTAMP NULL
+                    reviewed_at TIMESTAMP NULL,
+                    household_id UUID NOT NULL
                 )
                 """;
 
-        try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+        String addHouseholdColumn = """
+                ALTER TABLE reward_suggestions
+                ADD COLUMN IF NOT EXISTS household_id UUID
+                """;
 
-            ps.executeUpdate();
+        String removeUnsafeOldSuggestions = """
+                DELETE FROM reward_suggestions
+                WHERE household_id IS NULL
+                """;
+
+        String requireHouseholdColumn = """
+                ALTER TABLE reward_suggestions
+                ALTER COLUMN household_id SET NOT NULL
+                """;
+
+        String createHouseholdIndex = """
+                CREATE INDEX IF NOT EXISTS idx_reward_suggestions_household_id
+                ON reward_suggestions (household_id)
+                """;
+
+        try (Connection connection = dataSource.getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(createTable)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(addHouseholdColumn)) {
+                ps.executeUpdate();
+            }
+
+            /*
+             * Old suggestions without household_id are unsafe in a multi-family app.
+             * Since this is still development data, delete them instead of exposing
+             * them across households.
+             */
+            try (PreparedStatement ps = connection.prepareStatement(removeUnsafeOldSuggestions)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(requireHouseholdColumn)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(createHouseholdIndex)) {
+                ps.executeUpdate();
+            }
         }
     }
 
-    public RewardSuggestion createSuggestion(SuggestRewardRequest request)
-            throws SQLException {
+    public RewardSuggestion createSuggestion(
+            SuggestRewardRequest request,
+            UUID householdId) throws SQLException {
 
         String sql = """
                 INSERT INTO reward_suggestions (
@@ -46,9 +91,10 @@ public class RewardSuggestionRepository {
                     name,
                     cost,
                     reason,
-                    status
+                    status,
+                    household_id
                 )
-                VALUES (?, ?, ?, ?, 'WAITING')
+                VALUES (?, ?, ?, ?, 'WAITING', ?)
                 RETURNING *
                 """;
 
@@ -59,6 +105,7 @@ public class RewardSuggestionRepository {
             ps.setString(2, request.getName().trim());
             ps.setInt(3, request.getCost());
             ps.setString(4, cleanReason(request.getReason()));
+            ps.setObject(5, householdId, Types.OTHER);
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -70,13 +117,15 @@ public class RewardSuggestionRepository {
         }
     }
 
-    public Optional<RewardSuggestion> findWaitingById(int suggestionId)
-            throws SQLException {
+    public Optional<RewardSuggestion> findWaitingById(
+            int suggestionId,
+            UUID householdId) throws SQLException {
 
         String sql = """
                 SELECT *
                 FROM reward_suggestions
                 WHERE id = ?
+                AND household_id = ?
                 AND status = 'WAITING'
                 """;
 
@@ -84,6 +133,7 @@ public class RewardSuggestionRepository {
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, suggestionId);
+            ps.setObject(2, householdId, Types.OTHER);
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -95,22 +145,27 @@ public class RewardSuggestionRepository {
         }
     }
 
-    public boolean markApproved(int suggestionId) throws SQLException {
-        return updateStatus(suggestionId, "APPROVED");
-    }
-
-    public boolean markDenied(int suggestionId) throws SQLException {
-        return updateStatus(suggestionId, "DENIED");
-    }
-
-    private boolean updateStatus(int suggestionId, String status)
+    public boolean markApproved(int suggestionId, UUID householdId)
             throws SQLException {
+        return updateStatus(suggestionId, householdId, "APPROVED");
+    }
+
+    public boolean markDenied(int suggestionId, UUID householdId)
+            throws SQLException {
+        return updateStatus(suggestionId, householdId, "DENIED");
+    }
+
+    private boolean updateStatus(
+            int suggestionId,
+            UUID householdId,
+            String status) throws SQLException {
 
         String sql = """
                 UPDATE reward_suggestions
                 SET status = ?,
                     reviewed_at = CURRENT_TIMESTAMP
                 WHERE id = ?
+                AND household_id = ?
                 AND status = 'WAITING'
                 """;
 
@@ -119,6 +174,7 @@ public class RewardSuggestionRepository {
 
             ps.setString(1, status);
             ps.setInt(2, suggestionId);
+            ps.setObject(3, householdId, Types.OTHER);
 
             return ps.executeUpdate() == 1;
         }

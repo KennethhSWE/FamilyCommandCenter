@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public class DailyChoreService {
 
@@ -27,7 +28,9 @@ public class DailyChoreService {
         this.pointsService = pointsService;
     }
 
-    public DailyChoreSummary runMorningChoreSweep() throws SQLException {
+    public DailyChoreSummary runMorningChoreSweep(UUID householdId)
+            throws SQLException {
+
         LocalDate today = LocalDate.now();
 
         int kidsChecked = 0;
@@ -35,24 +38,28 @@ public class DailyChoreService {
         int penaltyPointsTaken = 0;
         int newChoresAssigned = 0;
 
-        List<User> kids = userDAO.getUsersByRole("kid");
+        List<User> kids = userDAO.getKidsByHousehold(householdId);
 
         for (User kid : kids) {
             kidsChecked++;
 
             int missedChores = choreRepository.moveMissedChoresToToday(
                     kid.getUsername(),
-                    today);
+                    today,
+                    householdId);
 
             carriedOverChores += missedChores;
 
             for (int i = 0; i < missedChores; i++) {
-                penaltyPointsTaken += pointsService.takePointForMissedChore(kid.getUsername());
+                penaltyPointsTaken += pointsService.takePointForMissedChore(
+                        kid.getUsername(),
+                        householdId);
             }
 
             int openChoresToday = choreRepository.countOpenChoresForKidOnDate(
                     kid.getUsername(),
-                    today);
+                    today,
+                    householdId);
 
             int choreSlotsToFill = Math.max(0, MAX_CHORES_PER_KID - openChoresToday);
 
@@ -60,7 +67,10 @@ public class DailyChoreService {
                 continue;
             }
 
-            List<ChoreCard> chorePool = choreRepository.findPoolChoresForKidAge(kid.getAge());
+            List<ChoreCard> chorePool = choreRepository.findPoolChoresForKidAge(
+                    kid.getAge(),
+                    householdId);
+
             Collections.shuffle(chorePool);
 
             int addedForThisKid = 0;
@@ -72,13 +82,19 @@ public class DailyChoreService {
 
                 boolean alreadyHasThisChore = choreRepository.isAlreadyAssignedToday(
                         kid.getUsername(),
-                        poolChore.getName());
+                        poolChore.getName(),
+                        householdId);
 
                 if (alreadyHasThisChore) {
                     continue;
                 }
 
-                choreRepository.assignPoolChoreToKid(poolChore, kid.getUsername(), today);
+                choreRepository.assignPoolChoreToKid(
+                        poolChore,
+                        kid.getUsername(),
+                        today,
+                        householdId);
+
                 addedForThisKid++;
                 newChoresAssigned++;
             }

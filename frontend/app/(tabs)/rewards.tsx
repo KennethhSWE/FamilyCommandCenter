@@ -17,14 +17,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  getKidsByHousehold,
+  getKids,
   getPoints,
   getRewards,
   Kid,
   redeemReward,
   Reward,
 } from "../../src/lib/api";
-import { getHouseholdId } from "../../src/lib/auth";
 
 export default function RewardsScreen() {
   const [kids, setKids] = useState<Kid[]>([]);
@@ -44,18 +43,8 @@ export default function RewardsScreen() {
     setRefreshing(true);
 
     try {
-      const householdId = await getHouseholdId();
-
-      if (!householdId) {
-        setKids([]);
-        setSelectedKidUsername("");
-        setRewards([]);
-        setPoints(0);
-        return;
-      }
-
       const [kidList, rewardList] = await Promise.all([
-        getKidsByHousehold(householdId),
+        getKids(),
         getRewards(),
       ]);
 

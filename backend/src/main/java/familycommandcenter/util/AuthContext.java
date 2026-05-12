@@ -4,6 +4,8 @@ import io.javalin.http.Context;
 import io.javalin.http.ForbiddenResponse;
 import io.javalin.http.UnauthorizedResponse;
 
+import java.util.UUID;
+
 public final class AuthContext {
 
     private static final String AUTH_USER_KEY = "authUser";
@@ -26,7 +28,7 @@ public final class AuthContext {
         return authUser;
     }
 
-    public static int requireHouseholdId(Context ctx) {
+    public static UUID requireHouseholdId(Context ctx) {
         return requireUser(ctx).getHouseholdId();
     }
 

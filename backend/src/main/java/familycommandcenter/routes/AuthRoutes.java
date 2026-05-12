@@ -41,8 +41,8 @@ public final class AuthRoutes {
 
             String parentName = req.adminName().trim();
 
-            if (userDAO.findByUsername(parentName).isPresent()) {
-                ctx.status(409).result("That name is already taken");
+            if (userDAO.parentUsernameExists(parentName)) {
+                ctx.status(409).result("That parent name is already taken");
                 return;
             }
 
@@ -57,7 +57,7 @@ public final class AuthRoutes {
                     "parent",
                     householdId));
 
-            Optional<User> savedParent = userDAO.findByUsername(parentName);
+            Optional<User> savedParent = userDAO.findParentByUsername(parentName);
 
             if (savedParent.isEmpty()) {
                 ctx.status(500).result("Parent user was not created");
@@ -92,7 +92,7 @@ public final class AuthRoutes {
                 return;
             }
 
-            Optional<User> possibleUser = userDAO.findByUsername(username.trim());
+            Optional<User> possibleUser = userDAO.findParentByUsername(username.trim());
 
             if (possibleUser.isEmpty()
                     || !PasswordUtils.checkPassword(
@@ -152,6 +152,12 @@ public final class AuthRoutes {
                 }
 
                 String kidName = kid.name().trim();
+
+                if (userDAO.kidNameExistsInHousehold(kidName, householdId)) {
+                    ctx.status(409).result("Kid name already exists in this household");
+                    return;
+                }
+
                 String hashedPin = PasswordUtils.hashPassword("0000");
 
                 userDAO.save(new User(
@@ -163,7 +169,7 @@ public final class AuthRoutes {
                         "kid",
                         householdId));
 
-                pointsDAO.addPoints(kidName, 0);
+                pointsDAO.addPoints(kidName, 0, householdId);
             }
 
             ctx.status(201);

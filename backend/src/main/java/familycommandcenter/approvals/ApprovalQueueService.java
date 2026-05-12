@@ -1,13 +1,14 @@
 package familycommandcenter.approvals;
 
 import familycommandcenter.chores.ChoreCard;
-import familycommandcenter.rewards.RewardCard;
 import familycommandcenter.notifications.NotificationService;
+import familycommandcenter.rewards.RewardCard;
 import familycommandcenter.rewards.RewardSuggestion;
 
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public class ApprovalQueueService {
 
@@ -26,15 +27,21 @@ public class ApprovalQueueService {
         approvalQueueRepository.makeSureTableExists();
     }
 
-    public List<ApprovalQueueItem> getWaitingApprovals() throws SQLException {
-        return approvalQueueRepository.findWaitingApprovals();
+    public List<ApprovalQueueItem> getWaitingApprovals(UUID householdId)
+            throws SQLException {
+        return approvalQueueRepository.findWaitingApprovals(householdId);
     }
 
-    public Optional<ApprovalQueueItem> getApprovalById(int approvalId) throws SQLException {
-        return approvalQueueRepository.findById(approvalId);
+    public Optional<ApprovalQueueItem> getApprovalById(
+            int approvalId,
+            UUID householdId) throws SQLException {
+        return approvalQueueRepository.findById(approvalId, householdId);
     }
 
-    public void addChoreApproval(ChoreCard chore) throws SQLException {
+    public void addChoreApproval(
+            ChoreCard chore,
+            UUID householdId) throws SQLException {
+
         String title = "Chore needs checked";
         String message = chore.getAssignedTo()
                 + " says \""
@@ -47,15 +54,17 @@ public class ApprovalQueueService {
                 ApprovalType.CHORE_COMPLETION,
                 chore.getId(),
                 title,
-                message);
+                message,
+                householdId);
 
-        notificationService.parentNeedsToCheckChore(message);
+        notificationService.parentNeedsToCheckChore(message, householdId);
     }
 
     public void addRewardApproval(
             String username,
             RewardCard reward,
-            int redemptionId) throws SQLException {
+            int redemptionId,
+            UUID householdId) throws SQLException {
 
         String title = "Reward needs approval";
         String message = username
@@ -69,37 +78,51 @@ public class ApprovalQueueService {
                 ApprovalType.REWARD_REDEMPTION,
                 redemptionId,
                 title,
-                message);
+                message,
+                householdId);
 
-        notificationService.parentNeedsToApproveReward(message);
+        notificationService.parentNeedsToApproveReward(message, householdId);
     }
 
-    public void markChoreApprovalApproved(int choreId) throws SQLException {
+    public void markChoreApprovalApproved(
+            int choreId,
+            UUID householdId) throws SQLException {
         approvalQueueRepository.markApprovedByRelatedRecord(
                 ApprovalType.CHORE_COMPLETION,
-                choreId);
+                choreId,
+                householdId);
     }
 
-    public void markChoreApprovalDenied(int choreId) throws SQLException {
+    public void markChoreApprovalDenied(
+            int choreId,
+            UUID householdId) throws SQLException {
         approvalQueueRepository.markDeniedByRelatedRecord(
                 ApprovalType.CHORE_COMPLETION,
-                choreId);
+                choreId,
+                householdId);
     }
 
-    public void markRewardApprovalApproved(int redemptionId) throws SQLException {
+    public void markRewardApprovalApproved(
+            int redemptionId,
+            UUID householdId) throws SQLException {
         approvalQueueRepository.markApprovedByRelatedRecord(
                 ApprovalType.REWARD_REDEMPTION,
-                redemptionId);
+                redemptionId,
+                householdId);
     }
 
-    public void markRewardApprovalDenied(int redemptionId) throws SQLException {
+    public void markRewardApprovalDenied(
+            int redemptionId,
+            UUID householdId) throws SQLException {
         approvalQueueRepository.markDeniedByRelatedRecord(
                 ApprovalType.REWARD_REDEMPTION,
-                redemptionId);
+                redemptionId,
+                householdId);
     }
 
-    public void addRewardSuggestionApproval(RewardSuggestion suggestion)
-            throws SQLException {
+    public void addRewardSuggestionApproval(
+            RewardSuggestion suggestion,
+            UUID householdId) throws SQLException {
 
         String title = "New reward suggested";
         String message = suggestion.getSuggestedBy()
@@ -117,20 +140,27 @@ public class ApprovalQueueService {
                 ApprovalType.REWARD_SUGGESTION,
                 suggestion.getId(),
                 title,
-                message);
+                message,
+                householdId);
 
-        notificationService.parentNeedsToApproveReward(message);
+        notificationService.parentHasRewardSuggestion(message, householdId);
     }
 
-    public void markRewardSuggestionApproved(int suggestionId) throws SQLException {
+    public void markRewardSuggestionApproved(
+            int suggestionId,
+            UUID householdId) throws SQLException {
         approvalQueueRepository.markApprovedByRelatedRecord(
                 ApprovalType.REWARD_SUGGESTION,
-                suggestionId);
+                suggestionId,
+                householdId);
     }
 
-    public void markRewardSuggestionDenied(int suggestionId) throws SQLException {
+    public void markRewardSuggestionDenied(
+            int suggestionId,
+            UUID householdId) throws SQLException {
         approvalQueueRepository.markDeniedByRelatedRecord(
                 ApprovalType.REWARD_SUGGESTION,
-                suggestionId);
+                suggestionId,
+                householdId);
     }
 }

@@ -6,8 +6,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class NotificationRepository {
 
@@ -18,7 +20,7 @@ public class NotificationRepository {
     }
 
     public void makeSureTableExists() throws SQLException {
-        String sql = """
+        String createTable = """
                 CREATE TABLE IF NOT EXISTS notification_messages (
                     id SERIAL PRIMARY KEY,
                     type VARCHAR(60) NOT NULL,
@@ -26,30 +28,74 @@ public class NotificationRepository {
                     message TEXT NOT NULL,
                     is_read BOOLEAN NOT NULL DEFAULT FALSE,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    read_at TIMESTAMP NULL
+                    read_at TIMESTAMP NULL,
+                    household_id UUID NOT NULL
                 )
                 """;
 
-        try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+        String addHouseholdColumn = """
+                ALTER TABLE notification_messages
+                ADD COLUMN IF NOT EXISTS household_id UUID
+                """;
 
-            ps.executeUpdate();
+        String removeUnsafeOldNotifications = """
+                DELETE FROM notification_messages
+                WHERE household_id IS NULL
+                """;
+
+        String requireHouseholdColumn = """
+                ALTER TABLE notification_messages
+                ALTER COLUMN household_id SET NOT NULL
+                """;
+
+        String createHouseholdIndex = """
+                CREATE INDEX IF NOT EXISTS idx_notification_messages_household_id
+                ON notification_messages (household_id)
+                """;
+
+        try (Connection connection = dataSource.getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(createTable)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(addHouseholdColumn)) {
+                ps.executeUpdate();
+            }
+
+            /*
+             * Old notifications without household_id are unsafe in a multi-family app.
+             * Since this is still development data, delete them instead of exposing
+             * them across households.
+             */
+            try (PreparedStatement ps = connection.prepareStatement(removeUnsafeOldNotifications)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(requireHouseholdColumn)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(createHouseholdIndex)) {
+                ps.executeUpdate();
+            }
         }
     }
 
     public void saveNotification(
             NotificationType type,
             String title,
-            String message) throws SQLException {
+            String message,
+            UUID householdId) throws SQLException {
 
         String sql = """
                 INSERT INTO notification_messages (
                     type,
                     title,
                     message,
-                    is_read
+                    is_read,
+                    household_id
                 )
-                VALUES (?, ?, ?, FALSE)
+                VALUES (?, ?, ?, FALSE, ?)
                 """;
 
         try (Connection connection = dataSource.getConnection();
@@ -58,54 +104,69 @@ public class NotificationRepository {
             ps.setString(1, type.name());
             ps.setString(2, title);
             ps.setString(3, message);
+            ps.setObject(4, householdId, Types.OTHER);
 
             ps.executeUpdate();
         }
     }
 
-    public List<NotificationMessage> findUnreadNotifications() throws SQLException {
+    public List<NotificationMessage> findUnreadNotifications(UUID householdId)
+            throws SQLException {
+
         String sql = """
                 SELECT *
                 FROM notification_messages
                 WHERE is_read = FALSE
+                AND household_id = ?
                 ORDER BY created_at DESC
                 """;
 
-        return findNotifications(sql);
+        return findNotifications(sql, householdId);
     }
 
-    public List<NotificationMessage> findRecentNotifications() throws SQLException {
+    public List<NotificationMessage> findRecentNotifications(UUID householdId)
+            throws SQLException {
+
         String sql = """
                 SELECT *
                 FROM notification_messages
+                WHERE household_id = ?
                 ORDER BY created_at DESC
                 LIMIT 50
                 """;
 
-        return findNotifications(sql);
+        return findNotifications(sql, householdId);
     }
 
-    public int countUnreadNotifications() throws SQLException {
+    public int countUnreadNotifications(UUID householdId) throws SQLException {
         String sql = """
                 SELECT COUNT(*)
                 FROM notification_messages
                 WHERE is_read = FALSE
+                AND household_id = ?
                 """;
 
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()) {
+                PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            return rs.next() ? rs.getInt(1) : 0;
+            ps.setObject(1, householdId, Types.OTHER);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
         }
     }
 
-    public boolean markRead(int notificationId) throws SQLException {
+    public boolean markRead(
+            int notificationId,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 UPDATE notification_messages
                 SET is_read = TRUE,
                     read_at = CURRENT_TIMESTAMP
                 WHERE id = ?
+                AND household_id = ?
                 AND is_read = FALSE
                 """;
 
@@ -113,39 +174,48 @@ public class NotificationRepository {
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, notificationId);
+            ps.setObject(2, householdId, Types.OTHER);
+
             return ps.executeUpdate() == 1;
         }
     }
 
-    public void markAllRead() throws SQLException {
+    public void markAllRead(UUID householdId) throws SQLException {
         String sql = """
                 UPDATE notification_messages
                 SET is_read = TRUE,
                     read_at = CURRENT_TIMESTAMP
                 WHERE is_read = FALSE
+                AND household_id = ?
                 """;
 
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
+            ps.setObject(1, householdId, Types.OTHER);
+
             ps.executeUpdate();
         }
     }
 
-    private List<NotificationMessage> findNotifications(String sql)
-            throws SQLException {
+    private List<NotificationMessage> findNotifications(
+            String sql,
+            UUID householdId) throws SQLException {
 
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()) {
+                PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            List<NotificationMessage> notifications = new ArrayList<>();
+            ps.setObject(1, householdId, Types.OTHER);
 
-            while (rs.next()) {
-                notifications.add(mapNotification(rs));
+            try (ResultSet rs = ps.executeQuery()) {
+                List<NotificationMessage> notifications = new ArrayList<>();
+
+                while (rs.next()) {
+                    notifications.add(mapNotification(rs));
+                }
+
+                return notifications;
             }
-
-            return notifications;
         }
     }
 

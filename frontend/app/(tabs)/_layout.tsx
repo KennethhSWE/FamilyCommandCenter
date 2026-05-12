@@ -30,6 +30,16 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="rewards"
+        options={{
+          title: "Rewards",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="gift" color={color} size={size} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="admin"
         options={{
           title: "Admin",

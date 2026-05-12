@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * JWT helper – generates and verifies HMAC-SHA256 tokens.
@@ -34,13 +35,13 @@ public final class JwtUtil {
             int userId,
             String username,
             String role,
-            int householdId) {
+            UUID householdId) {
 
         return Jwts.builder()
                 .setSubject(username)
                 .claim("userId", userId)
                 .claim("role", role)
-                .claim("householdId", householdId)
+                .claim("householdId", householdId.toString())
                 .setExpiration(Date.from(
                         Instant.now().plus(30, ChronoUnit.DAYS)))
                 .signWith(SIGNING_KEY, SignatureAlgorithm.HS256)
@@ -92,8 +93,9 @@ public final class JwtUtil {
         return verify(token).getBody().get("userId", Integer.class);
     }
 
-    public static Integer getHouseholdId(String token) {
-        return verify(token).getBody().get("householdId", Integer.class);
+    public static UUID getHouseholdId(String token) {
+        String rawHouseholdId = verify(token).getBody().get("householdId", String.class);
+        return UUID.fromString(rawHouseholdId);
     }
 
     private static Key initSigningKey() {

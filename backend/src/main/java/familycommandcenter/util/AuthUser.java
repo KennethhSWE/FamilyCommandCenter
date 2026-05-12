@@ -1,17 +1,19 @@
 package familycommandcenter.util;
 
+import java.util.UUID;
+
 public class AuthUser {
 
     private final int userId;
     private final String username;
     private final String role;
-    private final int householdId;
+    private final UUID householdId;
 
     public AuthUser(
             int userId,
             String username,
             String role,
-            int householdId) {
+            UUID householdId) {
         this.userId = userId;
         this.username = username;
         this.role = role;
@@ -30,7 +32,7 @@ public class AuthUser {
         return role;
     }
 
-    public int getHouseholdId() {
+    public UUID getHouseholdId() {
         return householdId;
     }
 

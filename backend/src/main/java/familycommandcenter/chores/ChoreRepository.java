@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public class ChoreRepository {
 
@@ -35,7 +36,8 @@ public class ChoreRepository {
                     is_recurring BOOLEAN NOT NULL DEFAULT FALSE,
                     is_verified BOOLEAN NOT NULL DEFAULT FALSE,
                     created_by INTEGER,
-                    complete BOOLEAN NOT NULL DEFAULT FALSE
+                    complete BOOLEAN NOT NULL DEFAULT FALSE,
+                    household_id UUID NOT NULL
                 )
                 """;
 
@@ -50,8 +52,24 @@ public class ChoreRepository {
                 "ALTER TABLE chores ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN NOT NULL DEFAULT FALSE",
                 "ALTER TABLE chores ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE",
                 "ALTER TABLE chores ADD COLUMN IF NOT EXISTS created_by INTEGER",
-                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS complete BOOLEAN NOT NULL DEFAULT FALSE"
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS complete BOOLEAN NOT NULL DEFAULT FALSE",
+                "ALTER TABLE chores ADD COLUMN IF NOT EXISTS household_id UUID"
         };
+
+        String removeUnsafeOldChores = """
+                DELETE FROM chores
+                WHERE household_id IS NULL
+                """;
+
+        String requireHouseholdColumn = """
+                ALTER TABLE chores
+                ALTER COLUMN household_id SET NOT NULL
+                """;
+
+        String createHouseholdIndex = """
+                CREATE INDEX IF NOT EXISTS idx_chores_household_id
+                ON chores (household_id)
+                """;
 
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement ps = connection.prepareStatement(createTable)) {
@@ -64,10 +82,25 @@ public class ChoreRepository {
                     ps.executeUpdate();
                 }
             }
+
+            try (PreparedStatement ps = connection.prepareStatement(removeUnsafeOldChores)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(requireHouseholdColumn)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(createHouseholdIndex)) {
+                ps.executeUpdate();
+            }
         }
     }
 
-    public void saveChore(CreateChoreRequest chore) throws SQLException {
+    public void saveChore(
+            CreateChoreRequest chore,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 INSERT INTO chores (
                     name,
@@ -81,9 +114,10 @@ public class ChoreRepository {
                     is_recurring,
                     is_verified,
                     created_by,
-                    complete
+                    complete,
+                    household_id
                 )
-                VALUES (?, ?, FALSE, ?, ?, FALSE, ?, ?, ?, FALSE, ?, FALSE)
+                VALUES (?, ?, FALSE, ?, ?, FALSE, ?, ?, ?, FALSE, ?, FALSE, ?)
                 """;
 
         String assignedKid = cleanBlank(chore.getAssignedTo());
@@ -91,7 +125,7 @@ public class ChoreRepository {
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setString(1, chore.getName());
+            ps.setString(1, chore.getName().trim());
             ps.setString(2, assignedKid);
 
             if (chore.getDueDate() != null && !chore.getDueDate().isBlank()) {
@@ -107,61 +141,70 @@ public class ChoreRepository {
             ps.setObject(6, chore.getMaxAge(), Types.INTEGER);
             ps.setBoolean(7, chore.repeatsEveryWeek());
             ps.setObject(8, chore.getCreatedBy(), Types.INTEGER);
+            ps.setObject(9, householdId, Types.OTHER);
 
             ps.executeUpdate();
         }
     }
 
-    public List<ChoreCard> findAllChores() throws SQLException {
+    public List<ChoreCard> findAllChores(UUID householdId) throws SQLException {
         String sql = """
                 SELECT *
                 FROM chores
+                WHERE household_id = ?
                 ORDER BY due_date NULLS LAST, assigned_to NULLS LAST, name ASC
                 """;
 
-        return findChores(sql);
+        return findChores(sql, householdId);
     }
 
-    public List<ChoreCard> findPendingApprovals() throws SQLException {
+    public List<ChoreCard> findPendingApprovals(UUID householdId) throws SQLException {
         String sql = """
                 SELECT *
                 FROM chores
-                WHERE requested_complete = TRUE
+                WHERE household_id = ?
+                AND requested_complete = TRUE
                 AND is_complete = FALSE
                 ORDER BY due_date ASC, assigned_to ASC
                 """;
 
-        return findChores(sql);
+        return findChores(sql, householdId);
     }
 
-    public List<ChoreCard> findChoresDueToday() throws SQLException {
+    public List<ChoreCard> findChoresDueToday(UUID householdId) throws SQLException {
         String sql = """
                 SELECT *
                 FROM chores
-                WHERE due_date = CURRENT_DATE
+                WHERE household_id = ?
+                AND due_date = CURRENT_DATE
                 ORDER BY assigned_to ASC, name ASC
                 """;
 
-        return findChores(sql);
+        return findChores(sql, householdId);
     }
 
-    public List<ChoreCard> findOverdueChores() throws SQLException {
+    public List<ChoreCard> findOverdueChores(UUID householdId) throws SQLException {
         String sql = """
                 SELECT *
                 FROM chores
-                WHERE due_date < CURRENT_DATE
+                WHERE household_id = ?
+                AND due_date < CURRENT_DATE
                 AND is_complete = FALSE
                 ORDER BY due_date ASC, assigned_to ASC
                 """;
 
-        return findChores(sql);
+        return findChores(sql, householdId);
     }
 
-    public List<ChoreCard> findChoresForKidDashboard(String username) throws SQLException {
+    public List<ChoreCard> findChoresForKidDashboard(
+            String username,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 SELECT *
                 FROM chores
-                WHERE assigned_to = ?
+                WHERE household_id = ?
+                AND assigned_to = ?
                 AND (
                     due_date = CURRENT_DATE
                     OR (due_date < CURRENT_DATE AND is_complete = FALSE)
@@ -172,7 +215,8 @@ public class ChoreRepository {
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setString(1, username);
+            ps.setObject(1, householdId, Types.OTHER);
+            ps.setString(2, username);
 
             try (ResultSet rs = ps.executeQuery()) {
                 List<ChoreCard> chores = new ArrayList<>();
@@ -186,17 +230,22 @@ public class ChoreRepository {
         }
     }
 
-    public Optional<ChoreCard> findById(int choreId) throws SQLException {
+    public Optional<ChoreCard> findById(
+            int choreId,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 SELECT *
                 FROM chores
                 WHERE id = ?
+                AND household_id = ?
                 """;
 
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, choreId);
+            ps.setObject(2, householdId, Types.OTHER);
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -208,11 +257,15 @@ public class ChoreRepository {
         }
     }
 
-    public boolean requestParentCheck(int choreId) throws SQLException {
+    public boolean requestParentCheck(
+            int choreId,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 UPDATE chores
                 SET requested_complete = TRUE
                 WHERE id = ?
+                AND household_id = ?
                 AND is_complete = FALSE
                 AND requested_complete = FALSE
                 """;
@@ -221,11 +274,16 @@ public class ChoreRepository {
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, choreId);
+            ps.setObject(2, householdId, Types.OTHER);
+
             return ps.executeUpdate() == 1;
         }
     }
 
-    public boolean approveChore(int choreId) throws SQLException {
+    public boolean approveChore(
+            int choreId,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 UPDATE chores
                 SET is_complete = TRUE,
@@ -233,6 +291,7 @@ public class ChoreRepository {
                     requested_complete = FALSE,
                     is_verified = TRUE
                 WHERE id = ?
+                AND household_id = ?
                 AND is_complete = FALSE
                 """;
 
@@ -240,15 +299,21 @@ public class ChoreRepository {
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, choreId);
+            ps.setObject(2, householdId, Types.OTHER);
+
             return ps.executeUpdate() == 1;
         }
     }
 
-    public boolean rejectChore(int choreId) throws SQLException {
+    public boolean rejectChore(
+            int choreId,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 UPDATE chores
                 SET requested_complete = FALSE
                 WHERE id = ?
+                AND household_id = ?
                 AND is_complete = FALSE
                 """;
 
@@ -256,29 +321,41 @@ public class ChoreRepository {
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, choreId);
+            ps.setObject(2, householdId, Types.OTHER);
+
             return ps.executeUpdate() == 1;
         }
     }
 
-    public void deleteChoreForNow(int choreId) throws SQLException {
+    public void deleteChoreForNow(
+            int choreId,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 DELETE FROM chores
                 WHERE id = ?
+                AND household_id = ?
                 """;
 
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setInt(1, choreId);
+            ps.setObject(2, householdId, Types.OTHER);
+
             ps.executeUpdate();
         }
     }
 
-    public List<ChoreCard> findPoolChoresForKidAge(int age) throws SQLException {
+    public List<ChoreCard> findPoolChoresForKidAge(
+            int age,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 SELECT *
                 FROM chores
-                WHERE assigned_to IS NULL
+                WHERE household_id = ?
+                AND assigned_to IS NULL
                 AND (min_age IS NULL OR min_age <= ?)
                 AND (max_age IS NULL OR max_age >= ?)
                 ORDER BY name ASC
@@ -287,8 +364,9 @@ public class ChoreRepository {
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setInt(1, age);
+            ps.setObject(1, householdId, Types.OTHER);
             ps.setInt(2, age);
+            ps.setInt(3, age);
 
             try (ResultSet rs = ps.executeQuery()) {
                 List<ChoreCard> chores = new ArrayList<>();
@@ -302,11 +380,16 @@ public class ChoreRepository {
         }
     }
 
-    public boolean isAlreadyAssignedToday(String username, String choreName) throws SQLException {
+    public boolean isAlreadyAssignedToday(
+            String username,
+            String choreName,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 SELECT 1
                 FROM chores
-                WHERE assigned_to = ?
+                WHERE household_id = ?
+                AND assigned_to = ?
                 AND name = ?
                 AND due_date = CURRENT_DATE
                 LIMIT 1
@@ -315,8 +398,9 @@ public class ChoreRepository {
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setString(1, username);
-            ps.setString(2, choreName);
+            ps.setObject(1, householdId, Types.OTHER);
+            ps.setString(2, username);
+            ps.setString(3, choreName);
 
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
@@ -324,11 +408,16 @@ public class ChoreRepository {
         }
     }
 
-    public int countOpenChoresForKidOnDate(String username, LocalDate dueDate) throws SQLException {
+    public int countOpenChoresForKidOnDate(
+            String username,
+            LocalDate dueDate,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 SELECT COUNT(*)
                 FROM chores
-                WHERE assigned_to = ?
+                WHERE household_id = ?
+                AND assigned_to = ?
                 AND due_date = ?
                 AND is_complete = FALSE
                 """;
@@ -336,8 +425,9 @@ public class ChoreRepository {
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            ps.setString(1, username);
-            ps.setDate(2, Date.valueOf(dueDate));
+            ps.setObject(1, householdId, Types.OTHER);
+            ps.setString(2, username);
+            ps.setDate(3, Date.valueOf(dueDate));
 
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
@@ -345,12 +435,17 @@ public class ChoreRepository {
         }
     }
 
-    public int moveMissedChoresToToday(String username, LocalDate today) throws SQLException {
+    public int moveMissedChoresToToday(
+            String username,
+            LocalDate today,
+            UUID householdId) throws SQLException {
+
         String sql = """
                 UPDATE chores
                 SET due_date = ?,
                     requested_complete = FALSE
-                WHERE assigned_to = ?
+                WHERE household_id = ?
+                AND assigned_to = ?
                 AND due_date < ?
                 AND is_complete = FALSE
                 AND requested_complete = FALSE
@@ -360,15 +455,19 @@ public class ChoreRepository {
                 PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setDate(1, Date.valueOf(today));
-            ps.setString(2, username);
-            ps.setDate(3, Date.valueOf(today));
+            ps.setObject(2, householdId, Types.OTHER);
+            ps.setString(3, username);
+            ps.setDate(4, Date.valueOf(today));
 
             return ps.executeUpdate();
         }
     }
 
-    public void assignPoolChoreToKid(ChoreCard poolChore, String username, LocalDate dueDate)
-            throws SQLException {
+    public void assignPoolChoreToKid(
+            ChoreCard poolChore,
+            String username,
+            LocalDate dueDate,
+            UUID householdId) throws SQLException {
 
         String sql = """
                 INSERT INTO chores (
@@ -383,9 +482,10 @@ public class ChoreRepository {
                     is_recurring,
                     is_verified,
                     created_by,
-                    complete
+                    complete,
+                    household_id
                 )
-                VALUES (?, ?, FALSE, ?, ?, FALSE, ?, ?, ?, FALSE, ?, FALSE)
+                VALUES (?, ?, FALSE, ?, ?, FALSE, ?, ?, ?, FALSE, ?, FALSE, ?)
                 """;
 
         try (Connection connection = dataSource.getConnection();
@@ -399,23 +499,30 @@ public class ChoreRepository {
             ps.setObject(6, poolChore.getMaxAge(), Types.INTEGER);
             ps.setBoolean(7, poolChore.isRecurring());
             ps.setObject(8, poolChore.getCreatedBy(), Types.INTEGER);
+            ps.setObject(9, householdId, Types.OTHER);
 
             ps.executeUpdate();
         }
     }
 
-    private List<ChoreCard> findChores(String sql) throws SQLException {
+    private List<ChoreCard> findChores(
+            String sql,
+            UUID householdId) throws SQLException {
+
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()) {
+                PreparedStatement ps = connection.prepareStatement(sql)) {
 
-            List<ChoreCard> chores = new ArrayList<>();
+            ps.setObject(1, householdId, Types.OTHER);
 
-            while (rs.next()) {
-                chores.add(mapChoreCard(rs));
+            try (ResultSet rs = ps.executeQuery()) {
+                List<ChoreCard> chores = new ArrayList<>();
+
+                while (rs.next()) {
+                    chores.add(mapChoreCard(rs));
+                }
+
+                return chores;
             }
-
-            return chores;
         }
     }
 
@@ -442,6 +549,6 @@ public class ChoreRepository {
             return null;
         }
 
-        return value;
+        return value.trim();
     }
 }

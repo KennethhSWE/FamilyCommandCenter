@@ -1,9 +1,10 @@
 package familycommandcenter.points;
 
 import familycommandcenter.model.PointsBankDAO;
-import java.util.List;
 
 import java.sql.SQLException;
+import java.util.List;
+import java.util.UUID;
 
 public class PointsService {
 
@@ -21,11 +22,22 @@ public class PointsService {
         this.pointTransactionRepository = pointTransactionRepository;
     }
 
-    public int getPoints(String username) throws SQLException {
-        return pointsBankDAO.getPoints(username);
+    public int getPoints(
+            String username,
+            UUID householdId) throws SQLException {
+
+        if (username == null || username.isBlank()) {
+            return 0;
+        }
+
+        return pointsBankDAO.getPoints(username.trim(), householdId);
     }
 
-    public void addPointsForApprovedChore(String username, int points) throws SQLException {
+    public void addPointsForApprovedChore(
+            String username,
+            int points,
+            UUID householdId) throws SQLException {
+
         if (username == null || username.isBlank()) {
             return;
         }
@@ -34,14 +46,44 @@ public class PointsService {
             return;
         }
 
-        pointsBankDAO.awardPoints(username, points);
+        String cleanUsername = username.trim();
+
+        pointsBankDAO.awardPoints(cleanUsername, points, householdId);
+
+        savePointTransaction(
+                cleanUsername,
+                points,
+                "Approved chore",
+                "CHORE_APPROVED",
+                householdId);
     }
 
-    public int takePointForMissedChore(String username) throws SQLException {
-        return takePointsButDontGoNegative(username, 1);
+    public int takePointForMissedChore(
+            String username,
+            UUID householdId) throws SQLException {
+
+        int pointsTaken = takePointsButDontGoNegative(
+                username,
+                1,
+                householdId);
+
+        if (pointsTaken > 0) {
+            savePointTransaction(
+                    username.trim(),
+                    -pointsTaken,
+                    "Missed chore penalty",
+                    "MISSED_CHORE",
+                    householdId);
+        }
+
+        return pointsTaken;
     }
 
-    public int takePointsButDontGoNegative(String username, int pointsToTake) throws SQLException {
+    public int takePointsButDontGoNegative(
+            String username,
+            int pointsToTake,
+            UUID householdId) throws SQLException {
+
         if (username == null || username.isBlank()) {
             return 0;
         }
@@ -50,35 +92,69 @@ public class PointsService {
             return 0;
         }
 
-        int currentPoints = pointsBankDAO.getPoints(username);
+        String cleanUsername = username.trim();
+
+        int currentPoints = pointsBankDAO.getPoints(cleanUsername, householdId);
         int pointsActuallyTaken = Math.min(currentPoints, pointsToTake);
 
         if (pointsActuallyTaken > 0) {
-            pointsBankDAO.deductPoints(username, pointsActuallyTaken);
+            pointsBankDAO.deductPoints(
+                    cleanUsername,
+                    pointsActuallyTaken,
+                    householdId);
         }
 
         return pointsActuallyTaken;
     }
 
-    public void parentAddsPoints(String username, int points, String reason) throws SQLException {
-        if (points > 0) {
-            pointsBankDAO.awardPoints(username, points);
-            savePointTransaction(username, points, reason, "PARENT_ADJUSTMENT");
+    public void parentAddsPoints(
+            String username,
+            int points,
+            String reason,
+            UUID householdId) throws SQLException {
+
+        if (points <= 0) {
+            return;
         }
+
+        String cleanUsername = username.trim();
+
+        pointsBankDAO.awardPoints(cleanUsername, points, householdId);
+
+        savePointTransaction(
+                cleanUsername,
+                points,
+                reason,
+                "PARENT_ADJUSTMENT",
+                householdId);
     }
 
-    public int parentTakesPoints(String username, int points, String reason) throws SQLException {
-        int pointsTaken = takePointsButDontGoNegative(username, points);
+    public int parentTakesPoints(
+            String username,
+            int points,
+            String reason,
+            UUID householdId) throws SQLException {
+
+        int pointsTaken = takePointsButDontGoNegative(
+                username,
+                points,
+                householdId);
 
         if (pointsTaken > 0) {
-            savePointTransaction(username, -pointsTaken, reason, "PARENT_ADJUSTMENT");
+            savePointTransaction(
+                    username.trim(),
+                    -pointsTaken,
+                    reason,
+                    "PARENT_ADJUSTMENT",
+                    householdId);
         }
 
         return pointsTaken;
     }
 
-    public PointAdjustmentResult parentAdjustsPoints(PointAdjustmentRequest request)
-            throws SQLException {
+    public PointAdjustmentResult parentAdjustsPoints(
+            PointAdjustmentRequest request,
+            UUID householdId) throws SQLException {
 
         if (request == null) {
             throw new IllegalArgumentException("Point adjustment request is required.");
@@ -101,24 +177,36 @@ public class PointsService {
             throw new IllegalArgumentException("Action is required.");
         }
 
+        String cleanUsername = username.trim();
         String cleanAction = action.trim().toUpperCase();
-        int oldPoints = pointsBankDAO.getPoints(username);
+
+        int oldPoints = pointsBankDAO.getPoints(cleanUsername, householdId);
         int changeAmount;
 
         if ("ADD".equals(cleanAction)) {
-            parentAddsPoints(username, points, reason);
+            parentAddsPoints(
+                    cleanUsername,
+                    points,
+                    reason,
+                    householdId);
+
             changeAmount = points;
         } else if ("REMOVE".equals(cleanAction)) {
-            int pointsTaken = parentTakesPoints(username, points, reason);
+            int pointsTaken = parentTakesPoints(
+                    cleanUsername,
+                    points,
+                    reason,
+                    householdId);
+
             changeAmount = -pointsTaken;
         } else {
             throw new IllegalArgumentException("Action must be ADD or REMOVE.");
         }
 
-        int newPoints = pointsBankDAO.getPoints(username);
+        int newPoints = pointsBankDAO.getPoints(cleanUsername, householdId);
 
         return new PointAdjustmentResult(
-                username,
+                cleanUsername,
                 cleanAction,
                 oldPoints,
                 changeAmount,
@@ -126,16 +214,21 @@ public class PointsService {
                 reason);
     }
 
-    public List<PointTransaction> getRecentTransactions() throws SQLException {
+    public List<PointTransaction> getRecentTransactions(UUID householdId)
+            throws SQLException {
+
         if (pointTransactionRepository == null) {
             return List.of();
         }
 
-        return pointTransactionRepository.findRecentTransactions(25);
+        return pointTransactionRepository.findRecentTransactions(
+                25,
+                householdId);
     }
 
-    public List<PointTransaction> getRecentTransactionsForKid(String username)
-            throws SQLException {
+    public List<PointTransaction> getRecentTransactionsForKid(
+            String username,
+            UUID householdId) throws SQLException {
 
         if (pointTransactionRepository == null) {
             return List.of();
@@ -147,14 +240,16 @@ public class PointsService {
 
         return pointTransactionRepository.findRecentTransactionsForKid(
                 username.trim(),
-                25);
+                25,
+                householdId);
     }
 
     private void savePointTransaction(
             String username,
             int changeAmount,
             String reason,
-            String source) throws SQLException {
+            String source,
+            UUID householdId) throws SQLException {
 
         if (pointTransactionRepository == null) {
             return;
@@ -164,7 +259,8 @@ public class PointsService {
                 username,
                 changeAmount,
                 reason,
-                source);
+                source,
+                householdId);
     }
 
     private String cleanReason(String reason) {

@@ -14,9 +14,8 @@ import {
   Kid,
   PointAdjustmentResult,
   adjustPoints,
-  getKidsByHousehold,
+  getKids,
 } from "../../src/lib/api";
-import { getHouseholdId } from "../../src/lib/auth";
 
 export default function PointAdjustmentPanel() {
   const [kids, setKids] = useState<Kid[]>([]);
@@ -30,15 +29,7 @@ export default function PointAdjustmentPanel() {
 
   const loadKids = useCallback(async () => {
     try {
-      const householdId = await getHouseholdId();
-
-      if (!householdId) {
-        setKids([]);
-        setSelectedKidUsername("");
-        return;
-      }
-
-      const householdKids = await getKidsByHousehold(householdId);
+      const householdKids = await getKids();
 
       setKids(householdKids);
 

@@ -5,6 +5,8 @@ import io.javalin.http.Handler;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 
+import java.util.UUID;
+
 /**
  * Bearer-token guard for protected API routes.
  *
@@ -36,15 +38,17 @@ public class AuthMiddleware implements Handler {
             String username = claims.getSubject();
             Integer userId = claims.get("userId", Integer.class);
             String role = claims.get("role", String.class);
-            Integer householdId = claims.get("householdId", Integer.class);
+            String rawHouseholdId = claims.get("householdId", String.class);
 
             if (username == null || username.isBlank()
                     || userId == null
                     || role == null || role.isBlank()
-                    || householdId == null) {
+                    || rawHouseholdId == null || rawHouseholdId.isBlank()) {
                 ctx.status(401).result("Token is missing required user claims");
                 return;
             }
+
+            UUID householdId = UUID.fromString(rawHouseholdId);
 
             AuthUser authUser = new AuthUser(
                     userId,

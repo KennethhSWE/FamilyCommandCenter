@@ -1,7 +1,10 @@
 package familycommandcenter.routes;
 
 import familycommandcenter.model.UserDAO;
+import familycommandcenter.util.AuthContext;
 import io.javalin.Javalin;
+
+import java.util.UUID;
 
 public final class UserRoutes {
 
@@ -10,19 +13,26 @@ public final class UserRoutes {
     }
 
     public static void register(Javalin api, UserDAO userDAO) {
-        api.get("/", ctx -> ctx.result(" Family Command Center LIVE"));
-        api.get("/api/users", ctx -> ctx.json(userDAO.findAll()));
+        api.get("/", ctx -> ctx.result("Family Command Center LIVE"));
+
+        api.get("/api/users", ctx -> {
+            AuthContext.requireParent(ctx);
+
+            UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+            ctx.json(userDAO.getKidsByHousehold(householdId));
+        });
+
         api.get("/api/users/kids", ctx -> {
             try {
-                System.out.println("DEBUG 1 - route hit");
+                AuthContext.requireParent(ctx);
 
-                var kids = userDAO.getUsersByRole("kid");
-                System.out.println("DEBUG 2 - DAO worked, count = " + kids.size());
+                UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+                var kids = userDAO.getKidsByHousehold(householdId);
 
                 ctx.json(kids);
-                System.out.println("DEBUG 3 - json sent");
             } catch (Exception e) {
-                System.out.println("DEBUG ERROR - inside /api/users/kids");
                 e.printStackTrace();
                 ctx.status(500).result("ERROR: " + e.getMessage());
             }

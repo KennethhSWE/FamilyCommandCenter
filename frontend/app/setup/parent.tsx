@@ -12,7 +12,7 @@ import {
 } from "react-native";
 
 import { createHousehold, setParentPinDuringSetup } from "../../src/lib/api";
-import { saveHouseholdId, saveToken } from "../../src/lib/auth";
+import { saveToken } from "../../src/lib/auth";
 
 export default function ParentSetupScreen() {
   const router = useRouter();
@@ -38,7 +38,6 @@ export default function ParentSetupScreen() {
       const setupResult = await createHousehold(parentName.trim(), pin);
 
       await saveToken(setupResult.token);
-      await saveHouseholdId(setupResult.householdId);
 
       await setParentPinDuringSetup(pin);
 

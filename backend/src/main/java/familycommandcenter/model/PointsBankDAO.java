@@ -1,11 +1,16 @@
 package familycommandcenter.model;
 
 import javax.sql.DataSource;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.UUID;
 
 /**
- * DAO for the <code>points_bank</code> table. Handles the running
- * total of points each kid has earned or spent.
+ * DAO for the points_bank table.
+ * Handles the running total of points each kid has earned or spent.
  */
 public final class PointsBankDAO {
 
@@ -15,55 +20,148 @@ public final class PointsBankDAO {
         this.ds = ds;
     }
 
-    /* ───────────────────────────── queries ───────────────────────────── */
+    public void makeSureTableExists() throws SQLException {
+        String createTable = """
+                CREATE TABLE IF NOT EXISTS points_bank (
+                    user_name VARCHAR(100) NOT NULL,
+                    total_points INTEGER NOT NULL DEFAULT 0,
+                    household_id UUID NOT NULL
+                )
+                """;
 
-    /** Returns the user's points. 
-     * If the user doesn't have a row in points_bank, returns 0. 
-    */
-    public int getPoints(String username) throws SQLException {
-        final String sql = "SELECT total_points FROM points_bank WHERE user_name = ?";
+        String addHouseholdColumn = """
+                ALTER TABLE points_bank
+                ADD COLUMN IF NOT EXISTS household_id UUID
+                """;
 
-        try (Connection c = ds.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+        String removeUnsafeOldPoints = """
+                DELETE FROM points_bank
+                WHERE household_id IS NULL
+                """;
 
-            ps.setString(1, username);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getInt(1) : 0;
+        String requireHouseholdColumn = """
+                ALTER TABLE points_bank
+                ALTER COLUMN household_id SET NOT NULL
+                """;
+
+        String dropOldPrimaryKey = """
+                ALTER TABLE points_bank
+                DROP CONSTRAINT IF EXISTS points_bank_pkey
+                """;
+
+        String dropOldUsernameUnique = """
+                ALTER TABLE points_bank
+                DROP CONSTRAINT IF EXISTS points_bank_user_name_key
+                """;
+
+        String createHouseholdUserIndex = """
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_points_bank_user_household
+                ON points_bank (user_name, household_id)
+                """;
+
+        try (Connection connection = ds.getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(createTable)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(addHouseholdColumn)) {
+                ps.executeUpdate();
+            }
+
+            /*
+             * Old point balances without household_id are unsafe in a multi-family app.
+             * Since this is still development data, delete them instead of risking
+             * shared point balances between households.
+             */
+            try (PreparedStatement ps = connection.prepareStatement(removeUnsafeOldPoints)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(requireHouseholdColumn)) {
+                ps.executeUpdate();
+            }
+
+            /*
+             * Older versions may have used user_name as the primary key/unique key.
+             * That will not work once two households can both have a kid named Liam.
+             */
+            try (PreparedStatement ps = connection.prepareStatement(dropOldPrimaryKey)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(dropOldUsernameUnique)) {
+                ps.executeUpdate();
+            }
+
+            try (PreparedStatement ps = connection.prepareStatement(createHouseholdUserIndex)) {
+                ps.executeUpdate();
             }
         }
     }
 
-    /* ───────────────────────────── updates ───────────────────────────── */
+    public int getPoints(
+            String username,
+            UUID householdId) throws SQLException {
 
-    /**
-     * Adds <code>pointsToAdd</code> (can be negative) to the user’s running total.
-     * Automatically inserts the row if it doesn’t exist.
-     */
-    public void addPoints(String username, int pointsToAdd) throws SQLException {
-        final String sql = """
-            INSERT INTO points_bank (user_name, total_points)
-                 VALUES (?, ?)
-            ON CONFLICT (user_name) DO UPDATE
-                SET total_points = points_bank.total_points + EXCLUDED.total_points
-        """;
+        String sql = """
+                SELECT total_points
+                FROM points_bank
+                WHERE user_name = ?
+                AND household_id = ?
+                """;
 
-        try (Connection c = ds.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+        try (Connection connection = ds.getConnection();
+                PreparedStatement ps = connection.prepareStatement(sql)) {
 
             ps.setString(1, username);
-            ps.setInt   (2, pointsToAdd);
+            ps.setObject(2, householdId, Types.OTHER);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt("total_points") : 0;
+            }
+        }
+    }
+
+    public void addPoints(
+            String username,
+            int pointsToAdd,
+            UUID householdId) throws SQLException {
+
+        String sql = """
+                INSERT INTO points_bank (
+                    user_name,
+                    total_points,
+                    household_id
+                )
+                VALUES (?, ?, ?)
+                ON CONFLICT (user_name, household_id) DO UPDATE
+                    SET total_points = points_bank.total_points + EXCLUDED.total_points
+                """;
+
+        try (Connection connection = ds.getConnection();
+                PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            ps.setInt(2, pointsToAdd);
+            ps.setObject(3, householdId, Types.OTHER);
+
             ps.executeUpdate();
         }
     }
 
-    /** Convenience wrapper for clarity when awarding points. */
-    public void awardPoints(String username, int points) throws SQLException {
-        addPoints(username, points);
+    public void awardPoints(
+            String username,
+            int points,
+            UUID householdId) throws SQLException {
+
+        addPoints(username, points, householdId);
     }
 
-    /** Convenience wrapper for clarity when deducting points. */
-    public void deductPoints(String username, int points) throws SQLException {
-        addPoints(username, -points);
+    public void deductPoints(
+            String username,
+            int points,
+            UUID householdId) throws SQLException {
+
+        addPoints(username, -points, householdId);
     }
 }
-

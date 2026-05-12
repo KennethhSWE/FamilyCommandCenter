@@ -1,10 +1,12 @@
 package familycommandcenter.rewards;
 
-import familycommandcenter.points.PointsService;
 import familycommandcenter.approvals.ApprovalQueueService;
+import familycommandcenter.points.PointsService;
+
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public class RewardService {
 
@@ -30,79 +32,101 @@ public class RewardService {
         this.suggestionRepository = suggestionRepository;
     }
 
-    public List<RewardCard> getRewardShop() throws SQLException {
-        return rewardRepository.findAllRewards();
+    public List<RewardCard> getRewardShop(UUID householdId) throws SQLException {
+        return rewardRepository.findAllRewards(householdId);
     }
 
-    public void addReward(CreateRewardRequest reward) throws SQLException {
-        rewardRepository.saveReward(reward);
+    public void addReward(CreateRewardRequest reward, UUID householdId) throws SQLException {
+        rewardRepository.saveReward(reward, householdId);
     }
 
-    public void addRewards(List<CreateRewardRequest> rewards) throws SQLException {
+    public void addRewards(List<CreateRewardRequest> rewards, UUID householdId) throws SQLException {
         for (CreateRewardRequest reward : rewards) {
-            addReward(reward);
+            addReward(reward, householdId);
         }
     }
 
-    public void deleteReward(int rewardId) throws SQLException {
-        rewardRepository.deleteReward(rewardId);
+    public void deleteReward(int rewardId, UUID householdId) throws SQLException {
+        rewardRepository.deleteReward(rewardId, householdId);
     }
 
-    public RewardRedeemResult kidWantsReward(String username, int rewardId)
-            throws SQLException {
+    public RewardRedeemResult kidWantsReward(
+            String username,
+            int rewardId,
+            UUID householdId) throws SQLException {
 
-        Optional<RewardCard> possibleReward = rewardRepository.findById(rewardId);
+        Optional<RewardCard> possibleReward = rewardRepository.findById(
+                rewardId,
+                householdId);
 
         if (possibleReward.isEmpty()) {
             return RewardRedeemResult.notFound();
         }
 
         RewardCard reward = possibleReward.get();
-        int currentPoints = pointsService.getPoints(username);
+        int currentPoints = pointsService.getPoints(username, householdId);
 
         if (currentPoints < reward.getCost()) {
             return RewardRedeemResult.notEnoughPoints();
         }
 
-        boolean needsParentApproval = reward.isRequiresApproval() || reward.getCost() > APPROVAL_POINT_LIMIT;
+        boolean needsParentApproval = reward.isRequiresApproval()
+                || reward.getCost() > APPROVAL_POINT_LIMIT;
 
         if (needsParentApproval) {
             int redemptionId = redemptionRepository.createRedemption(
                     username,
                     rewardId,
-                    "WAITING_FOR_PARENT");
+                    "WAITING_FOR_PARENT",
+                    householdId);
 
-            approvalQueueService.addRewardApproval(username, reward, redemptionId);
+            approvalQueueService.addRewardApproval(
+                    username,
+                    reward,
+                    redemptionId,
+                    householdId);
 
             return RewardRedeemResult.waitingForParent();
         }
 
-        pointsService.takePointsButDontGoNegative(username, reward.getCost());
+        pointsService.takePointsButDontGoNegative(
+                username,
+                reward.getCost(),
+                householdId);
 
         redemptionRepository.createRedemption(
                 username,
                 rewardId,
-                "AUTO_APPROVED");
+                "AUTO_APPROVED",
+                householdId);
 
         return RewardRedeemResult.autoApproved();
     }
 
-    public RewardSuggestion kidSuggestsReward(SuggestRewardRequest request)
-            throws SQLException {
+    public RewardSuggestion kidSuggestsReward(
+            SuggestRewardRequest request,
+            UUID householdId) throws SQLException {
 
         validateRewardSuggestion(request);
 
-        RewardSuggestion suggestion = suggestionRepository.createSuggestion(request);
+        RewardSuggestion suggestion = suggestionRepository.createSuggestion(
+                request,
+                householdId);
 
-        approvalQueueService.addRewardSuggestionApproval(suggestion);
+        approvalQueueService.addRewardSuggestionApproval(
+                suggestion,
+                householdId);
 
         return suggestion;
     }
 
-    public boolean parentApprovesRewardSuggestion(int suggestionId)
-            throws SQLException {
+    public boolean parentApprovesRewardSuggestion(
+            int suggestionId,
+            UUID householdId) throws SQLException {
 
-        Optional<RewardSuggestion> possibleSuggestion = suggestionRepository.findWaitingById(suggestionId);
+        Optional<RewardSuggestion> possibleSuggestion = suggestionRepository.findWaitingById(
+                suggestionId,
+                householdId);
 
         if (possibleSuggestion.isEmpty()) {
             return false;
@@ -115,24 +139,99 @@ public class RewardService {
         reward.setCost(suggestion.getCost());
         reward.setRequiresApproval(suggestion.getCost() > APPROVAL_POINT_LIMIT);
 
-        rewardRepository.saveReward(reward);
+        rewardRepository.saveReward(reward, householdId);
 
-        boolean approved = suggestionRepository.markApproved(suggestionId);
+        boolean approved = suggestionRepository.markApproved(
+                suggestionId,
+                householdId);
 
         if (approved) {
-            approvalQueueService.markRewardSuggestionApproved(suggestionId);
+            approvalQueueService.markRewardSuggestionApproved(
+                    suggestionId,
+                    householdId);
         }
 
         return approved;
     }
 
-    public boolean parentDeniesRewardSuggestion(int suggestionId)
-            throws SQLException {
+    public boolean parentDeniesRewardSuggestion(
+            int suggestionId,
+            UUID householdId) throws SQLException {
 
-        boolean denied = suggestionRepository.markDenied(suggestionId);
+        boolean denied = suggestionRepository.markDenied(
+                suggestionId,
+                householdId);
 
         if (denied) {
-            approvalQueueService.markRewardSuggestionDenied(suggestionId);
+            approvalQueueService.markRewardSuggestionDenied(
+                    suggestionId,
+                    householdId);
+        }
+
+        return denied;
+    }
+
+    public boolean parentApprovesReward(
+            int redemptionId,
+            UUID householdId) throws SQLException {
+
+        Optional<RewardRedemptionCard> possibleRedemption = redemptionRepository.findPendingRedemption(
+                redemptionId,
+                householdId);
+
+        if (possibleRedemption.isEmpty()) {
+            return false;
+        }
+
+        RewardRedemptionCard redemption = possibleRedemption.get();
+
+        Optional<RewardCard> possibleReward = rewardRepository.findById(
+                redemption.getRewardId(),
+                householdId);
+
+        if (possibleReward.isEmpty()) {
+            return false;
+        }
+
+        RewardCard reward = possibleReward.get();
+        int currentPoints = pointsService.getPoints(
+                redemption.getUsername(),
+                householdId);
+
+        if (currentPoints < reward.getCost()) {
+            return false;
+        }
+
+        pointsService.takePointsButDontGoNegative(
+                redemption.getUsername(),
+                reward.getCost(),
+                householdId);
+
+        boolean approved = redemptionRepository.markApproved(
+                redemptionId,
+                householdId);
+
+        if (approved) {
+            approvalQueueService.markRewardApprovalApproved(
+                    redemptionId,
+                    householdId);
+        }
+
+        return approved;
+    }
+
+    public boolean parentDeniesReward(
+            int redemptionId,
+            UUID householdId) throws SQLException {
+
+        boolean denied = redemptionRepository.markDenied(
+                redemptionId,
+                householdId);
+
+        if (denied) {
+            approvalQueueService.markRewardApprovalDenied(
+                    redemptionId,
+                    householdId);
         }
 
         return denied;
@@ -154,49 +253,5 @@ public class RewardService {
         if (request.getCost() <= 0) {
             throw new IllegalArgumentException("Reward cost must be greater than 0.");
         }
-    }
-
-    public boolean parentApprovesReward(int redemptionId) throws SQLException {
-        Optional<RewardRedemptionCard> possibleRedemption = redemptionRepository.findPendingRedemption(redemptionId);
-
-        if (possibleRedemption.isEmpty()) {
-            return false;
-        }
-
-        RewardRedemptionCard redemption = possibleRedemption.get();
-        Optional<RewardCard> possibleReward = rewardRepository.findById(redemption.getRewardId());
-
-        if (possibleReward.isEmpty()) {
-            return false;
-        }
-
-        RewardCard reward = possibleReward.get();
-        int currentPoints = pointsService.getPoints(redemption.getUsername());
-
-        if (currentPoints < reward.getCost()) {
-            return false;
-        }
-
-        pointsService.takePointsButDontGoNegative(
-                redemption.getUsername(),
-                reward.getCost());
-
-        boolean approved = redemptionRepository.markApproved(redemptionId);
-
-        if (approved) {
-            approvalQueueService.markRewardApprovalApproved(redemptionId);
-        }
-
-        return approved;
-    }
-
-    public boolean parentDeniesReward(int redemptionId) throws SQLException {
-        boolean denied = redemptionRepository.markDenied(redemptionId);
-
-        if (denied) {
-            approvalQueueService.markRewardApprovalDenied(redemptionId);
-        }
-
-        return denied;
     }
 }

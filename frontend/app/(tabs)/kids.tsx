@@ -16,8 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { getKidsByHousehold, Kid } from "../../src/lib/api";
-import { getHouseholdId } from "../../src/lib/auth";
+import { getKids, Kid } from "../../src/lib/api";
 import KidCard from "../components/KidCard";
 
 const screenWidth = Dimensions.get("window").width;
@@ -53,14 +52,7 @@ export default function KidsTab() {
 
   const loadKids = useCallback(async () => {
     try {
-      const householdId = await getHouseholdId();
-
-      if (!householdId) {
-        router.replace("/setup/parent" as any);
-        return;
-      }
-
-      const list = await getKidsByHousehold(householdId);
+      const list = await getKids();
       setKids(list);
 
       if (!list || list.length === 0) {
@@ -69,6 +61,7 @@ export default function KidsTab() {
       }
     } catch (error) {
       console.error("Failed to load kids:", error);
+      router.replace("/setup/parent" as any);
     } finally {
       setLoading(false);
       setRefreshing(false);

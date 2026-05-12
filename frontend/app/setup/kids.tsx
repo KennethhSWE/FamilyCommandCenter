@@ -13,8 +13,7 @@ import {
   View,
 } from "react-native";
 
-import { addKidsToHousehold } from "../../src/lib/api";
-import { getHouseholdId } from "../../src/lib/auth";
+import { addKids } from "../../src/lib/api";
 
 type SetupKid = {
   localId: string;
@@ -92,14 +91,7 @@ export default function SetupKidsScreen() {
     setSaving(true);
 
     try {
-      const householdId = await getHouseholdId();
-
-      if (!householdId) {
-        Alert.alert("Setup Error", "Household ID is missing. Restart setup.");
-        return;
-      }
-
-      await addKidsToHousehold(householdId, cleanedKids);
+      await addKids(cleanedKids);
 
       router.replace("/setup/chores" as any);
     } catch (error: any) {

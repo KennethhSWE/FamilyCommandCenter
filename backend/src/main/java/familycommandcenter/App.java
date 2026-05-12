@@ -30,6 +30,7 @@ import familycommandcenter.routes.PointsRoutes;
 import familycommandcenter.routes.RewardRoutes;
 import familycommandcenter.routes.UserRoutes;
 import familycommandcenter.util.AuthMiddleware;
+import familycommandcenter.util.AuthContext;
 import familycommandcenter.rewards.RewardSuggestionRepository;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
@@ -37,6 +38,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.UUID;
 
 public final class App {
 
@@ -44,7 +46,9 @@ public final class App {
                 DataSource ds = Database.getDataSource();
 
                 UserDAO userDAO = new UserDAO(ds);
+                userDAO.makeSureUserTableIsReady();
                 PointsBankDAO pointsDAO = new PointsBankDAO(ds);
+                pointsDAO.makeSureTableExists();
 
                 PointTransactionRepository pointTransactionRepository = new PointTransactionRepository(ds);
                 pointTransactionRepository.makeSureTableExists();
@@ -83,7 +87,11 @@ public final class App {
                                 pointsService);
 
                 RewardRepository rewardRepository = new RewardRepository(ds);
+                rewardRepository.makeSureRewardTableIsReady();
+
                 RewardRedemptionRepository rewardRedemptionRepository = new RewardRedemptionRepository(ds);
+                rewardRedemptionRepository.makeSureTableExists();
+
                 RewardSuggestionRepository rewardSuggestionRepository = new RewardSuggestionRepository(ds);
                 rewardSuggestionRepository.makeSureTableExists();
                 RewardService rewardService = new RewardService(
@@ -118,16 +126,30 @@ public final class App {
                 PointsRoutes.register(api, pointsService);
                 UserRoutes.register(api, userDAO);
 
-                api.post("/api/assign/daily", ctx -> ctx.json(dailyChoreService.runMorningChoreSweep()));
+                api.post("/api/assign/daily", ctx -> {
+                        UUID householdId = AuthContext.requireHouseholdId(ctx);
+
+                        ctx.json(dailyChoreService.runMorningChoreSweep(householdId));
+                });
 
                 api.before("/api/parent-pin/*", new AuthMiddleware());
+
+                api.before("/api/chores", new AuthMiddleware());
                 api.before("/api/chores/*", new AuthMiddleware());
+
+                api.before("/api/rewards", new AuthMiddleware());
                 api.before("/api/rewards/*", new AuthMiddleware());
+
                 api.before("/api/approvals/*", new AuthMiddleware());
                 api.before("/api/notifications/*", new AuthMiddleware());
                 api.before("/api/calendar/*", new AuthMiddleware());
                 api.before("/api/points/*", new AuthMiddleware());
+                api.before("/api/users", new AuthMiddleware());
                 api.before("/api/users/*", new AuthMiddleware());
                 api.before("/api/assign/*", new AuthMiddleware());
+                api.before("/api/household/kids", new AuthMiddleware());
+                api.before("/api/kids", new AuthMiddleware());
+                api.before("/api/kids/*", new AuthMiddleware());
+
         }
 }

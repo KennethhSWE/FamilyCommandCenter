@@ -13,8 +13,7 @@ import {
   View,
 } from "react-native";
 
-import { createRewardBulk } from "../../src/lib/api";
-import { getHouseholdId } from "../../src/lib/auth";
+import { createRewards } from "../../src/lib/api";
 
 type SetupReward = {
   localId: string;
@@ -75,13 +74,6 @@ export default function SetupRewardsScreen() {
   };
 
   const saveRewardsAndFinish = async () => {
-    const householdId = await getHouseholdId();
-
-    if (!householdId) {
-      Alert.alert("Setup Error", "Household ID is missing. Restart setup.");
-      return;
-    }
-
     const cleanedRewards = rewards
       .map((reward) => {
         const pointCost = Number(reward.cost);
@@ -114,7 +106,7 @@ export default function SetupRewardsScreen() {
     setSaving(true);
 
     try {
-      await createRewardBulk(householdId, cleanedRewards);
+      await createRewards(cleanedRewards);
       router.replace("/setup/done" as any);
     } catch (error: any) {
       console.error("save starter rewards:", error);
