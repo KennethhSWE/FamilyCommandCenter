@@ -143,6 +143,17 @@ export interface ApprovalQueueItem {
   reviewedAt?: string | null;
 }
 
+export interface RewardSuggestion {
+  id: number;
+  suggestedBy: string;
+  name: string;
+  cost: number;
+  reason?: string | null;
+  status: string;
+  createdAt?: string;
+  reviewedAt?: string | null;
+}
+
 export interface ParentNotification {
   id: number;
   type:
@@ -423,6 +434,37 @@ export const approveRewardRedemption = (redemptionId: number) =>
 
 export const denyRewardRedemption = (redemptionId: number) =>
   unwrap(api.patch(`/rewards/deny/${redemptionId}`));
+
+export const suggestReward = (
+  username: string,
+  name: string,
+  cost: number,
+  reason: string,
+) =>
+  unwrap<RewardSuggestion>(
+    api.post("/rewards/suggest", {
+      username,
+      name,
+      cost,
+      reason,
+    }),
+  );
+
+export const createReward = (
+  name: string,
+  cost: number,
+  requiresApproval: boolean,
+) =>
+  unwrap<Reward>(
+    api.post("/rewards", {
+      name,
+      cost,
+      requiresApproval,
+    }),
+  );
+
+export const deleteReward = (rewardId: number) =>
+  unwrap(api.delete(`/rewards/${rewardId}`));
 
 /* ===================================================================
    Approval Queue

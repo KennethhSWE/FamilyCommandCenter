@@ -6,6 +6,7 @@ import familycommandcenter.rewards.CreateRewardRequest;
 import familycommandcenter.rewards.RedeemRewardRequest;
 import familycommandcenter.rewards.RewardRedeemResult;
 import familycommandcenter.rewards.RewardService;
+import familycommandcenter.rewards.SuggestRewardRequest;
 import io.javalin.Javalin;
 
 import java.util.List;
@@ -22,6 +23,19 @@ public final class RewardRoutes {
     public static void register(Javalin api, RewardService rewardService) {
 
         api.get("/api/rewards", ctx -> ctx.json(rewardService.getRewardShop()));
+
+        api.post("/api/rewards/suggest", ctx -> {
+            try {
+                SuggestRewardRequest request = ctx.bodyAsClass(SuggestRewardRequest.class);
+
+                ctx.status(201).json(rewardService.kidSuggestsReward(request));
+            } catch (IllegalArgumentException e) {
+                ctx.status(400).json(Map.of("message", e.getMessage()));
+            } catch (Exception e) {
+                e.printStackTrace();
+                ctx.status(500).result("Failed to suggest reward");
+            }
+        });
 
         api.post("/api/rewards", ctx -> {
             CreateRewardRequest reward = ctx.bodyAsClass(CreateRewardRequest.class);
@@ -93,4 +107,5 @@ public final class RewardRoutes {
             ctx.status(204);
         });
     }
+
 }

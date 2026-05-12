@@ -1,7 +1,11 @@
 package familycommandcenter.util;
 
 import io.github.cdimascio.dotenv.Dotenv;
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 
 import java.security.Key;
@@ -11,10 +15,11 @@ import java.util.Base64;
 import java.util.Date;
 
 /**
- * JWT helper – generates & verifies HMAC-SHA256 tokens.
- * <p>The signing secret is read from <code>JWT_SECRET</code> in <code>.env</code>.
- * If the env-var is missing (local dev) a fallback secret is generated at runtime
- * so the application still starts, but a warning is logged.</p>
+ * JWT helper – generates and verifies HMAC-SHA256 tokens.
+ *
+ * The signing secret is read from JWT_SECRET in .env.
+ * If the env-var is missing during local dev, a fallback secret is generated at
+ * runtime.
  */
 public final class JwtUtil {
 
@@ -22,32 +27,57 @@ public final class JwtUtil {
     private static final Key SIGNING_KEY = initSigningKey();
 
     private JwtUtil() {
-        // utility class – no instances
-    } 
-
-    /* ------------------------------------------------------------------
-     *  Public API
-     * ---------------------------------------------------------------- */
-    public static String generateToken(String username, String role) {
-        return Jwts.builder()
-                   .setSubject(username)
-                   .claim("role", role)
-                   .setExpiration(Date.from(
-                       Instant.now().plus(30, ChronoUnit.DAYS)))
-                   .signWith(SIGNING_KEY, SignatureAlgorithm.HS256)
-                   .compact();
+        // Utility class
     }
 
-    /** Convenience overload: defaults to <code>role=kid</code>. */
+    public static String generateToken(
+            int userId,
+            String username,
+            String role,
+            int householdId) {
+
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("userId", userId)
+                .claim("role", role)
+                .claim("householdId", householdId)
+                .setExpiration(Date.from(
+                        Instant.now().plus(30, ChronoUnit.DAYS)))
+                .signWith(SIGNING_KEY, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    /**
+     * Temporary compatibility overload.
+     *
+     * Do not use this for new routes. New tokens must include userId and
+     * householdId.
+     */
+    public static String generateToken(String username, String role) {
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("role", role)
+                .setExpiration(Date.from(
+                        Instant.now().plus(30, ChronoUnit.DAYS)))
+                .signWith(SIGNING_KEY, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    /**
+     * Temporary compatibility overload.
+     *
+     * Do not use this for new routes. New tokens must include userId and
+     * householdId.
+     */
     public static String generateToken(String username) {
         return generateToken(username, "kid");
     }
 
     public static Jws<Claims> verify(String token) throws JwtException {
         return Jwts.parserBuilder()
-                   .setSigningKey(SIGNING_KEY)
-                   .build()
-                   .parseClaimsJws(token);
+                .setSigningKey(SIGNING_KEY)
+                .build()
+                .parseClaimsJws(token);
     }
 
     public static String getUsername(String token) {
@@ -58,11 +88,17 @@ public final class JwtUtil {
         return verify(token).getBody().get("role", String.class);
     }
 
-    /* ------------------------------------------------------------------
-     *  Internal helpers
-     * ---------------------------------------------------------------- */
+    public static Integer getUserId(String token) {
+        return verify(token).getBody().get("userId", Integer.class);
+    }
+
+    public static Integer getHouseholdId(String token) {
+        return verify(token).getBody().get("householdId", Integer.class);
+    }
+
     private static Key initSigningKey() {
         String secretB64 = System.getenv("JWT_SECRET");
+
         if (secretB64 == null || secretB64.isBlank()) {
             secretB64 = DOTENV.get("JWT_SECRET");
         }
@@ -71,17 +107,20 @@ public final class JwtUtil {
 
         if (secretB64 == null || secretB64.isBlank()) {
             System.err.println("[WARN] JWT_SECRET not found – using runtime random key. "
-                             + "Tokens will be invalid after restart.");
-            secretBytes = new byte[64];            // 512-bit random dev key
+                    + "Tokens will be invalid after restart.");
+
+            secretBytes = new byte[64];
             new java.security.SecureRandom().nextBytes(secretBytes);
         } else {
             secretBytes = Base64.getDecoder().decode(secretB64);
-            if (secretBytes.length < 32) {         // 256-bit minimum
+
+            if (secretBytes.length < 32) {
                 throw new IllegalStateException(
-                    "JWT_SECRET too short (" + secretBytes.length
-                  + " bytes). Must be ≥ 32 bytes after base-64 decoding.");
+                        "JWT_SECRET too short (" + secretBytes.length
+                                + " bytes). Must be >= 32 bytes after base-64 decoding.");
             }
         }
+
         return Keys.hmacShaKeyFor(secretBytes);
     }
 }

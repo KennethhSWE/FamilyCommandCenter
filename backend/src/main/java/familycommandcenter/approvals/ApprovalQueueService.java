@@ -3,6 +3,7 @@ package familycommandcenter.approvals;
 import familycommandcenter.chores.ChoreCard;
 import familycommandcenter.rewards.RewardCard;
 import familycommandcenter.notifications.NotificationService;
+import familycommandcenter.rewards.RewardSuggestion;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -95,5 +96,41 @@ public class ApprovalQueueService {
         approvalQueueRepository.markDeniedByRelatedRecord(
                 ApprovalType.REWARD_REDEMPTION,
                 redemptionId);
+    }
+
+    public void addRewardSuggestionApproval(RewardSuggestion suggestion)
+            throws SQLException {
+
+        String title = "New reward suggested";
+        String message = suggestion.getSuggestedBy()
+                + " suggested \""
+                + suggestion.getName()
+                + "\" for "
+                + suggestion.getCost()
+                + " points.";
+
+        if (suggestion.getReason() != null && !suggestion.getReason().isBlank()) {
+            message += " Reason: " + suggestion.getReason();
+        }
+
+        approvalQueueRepository.addWaitingApproval(
+                ApprovalType.REWARD_SUGGESTION,
+                suggestion.getId(),
+                title,
+                message);
+
+        notificationService.parentNeedsToApproveReward(message);
+    }
+
+    public void markRewardSuggestionApproved(int suggestionId) throws SQLException {
+        approvalQueueRepository.markApprovedByRelatedRecord(
+                ApprovalType.REWARD_SUGGESTION,
+                suggestionId);
+    }
+
+    public void markRewardSuggestionDenied(int suggestionId) throws SQLException {
+        approvalQueueRepository.markDeniedByRelatedRecord(
+                ApprovalType.REWARD_SUGGESTION,
+                suggestionId);
     }
 }

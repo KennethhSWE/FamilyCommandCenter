@@ -30,6 +30,7 @@ import familycommandcenter.routes.PointsRoutes;
 import familycommandcenter.routes.RewardRoutes;
 import familycommandcenter.routes.UserRoutes;
 import familycommandcenter.util.AuthMiddleware;
+import familycommandcenter.rewards.RewardSuggestionRepository;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -83,9 +84,12 @@ public final class App {
 
                 RewardRepository rewardRepository = new RewardRepository(ds);
                 RewardRedemptionRepository rewardRedemptionRepository = new RewardRedemptionRepository(ds);
+                RewardSuggestionRepository rewardSuggestionRepository = new RewardSuggestionRepository(ds);
+                rewardSuggestionRepository.makeSureTableExists();
                 RewardService rewardService = new RewardService(
                                 rewardRepository,
                                 rewardRedemptionRepository,
+                                rewardSuggestionRepository,
                                 pointsService,
                                 approvalQueueService);
 

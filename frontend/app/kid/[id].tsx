@@ -13,11 +13,17 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { getChoresByKid, requestChoreApproval, Chore } from "../../src/lib/api";
+import {
+  getChoresByKid,
+  requestChoreApproval,
+  suggestReward,
+  Chore,
+} from "../../src/lib/api";
 
 export default function KidChoresScreen() {
   const router = useRouter();
@@ -29,6 +35,10 @@ export default function KidChoresScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [workingChoreId, setWorkingChoreId] = useState<number | null>(null);
+  const [rewardName, setRewardName] = useState("");
+  const [rewardCost, setRewardCost] = useState("");
+  const [rewardReason, setRewardReason] = useState("");
+  const [sendingSuggestion, setSendingSuggestion] = useState(false);
 
   const loadChores = useCallback(async () => {
     if (!username) {
@@ -105,6 +115,58 @@ export default function KidChoresScreen() {
     );
   }
 
+  const sendRewardSuggestion = async () => {
+    if (!username) {
+      Alert.alert("Error", "Kid username is missing.");
+      return;
+    }
+
+    const cleanName = rewardName.trim();
+    const cleanReason = rewardReason.trim();
+    const cost = Number(rewardCost);
+
+    if (!cleanName) {
+      Alert.alert("Reward Needed", "Enter the reward you want to suggest.");
+      return;
+    }
+
+    if (!Number.isFinite(cost) || cost <= 0) {
+      Alert.alert(
+        "Point Cost Needed",
+        "Enter how many points this reward should cost.",
+      );
+      return;
+    }
+
+    setSendingSuggestion(true);
+
+    try {
+      await suggestReward(username, cleanName, cost, cleanReason);
+
+      setRewardName("");
+      setRewardCost("");
+      setRewardReason("");
+
+      Alert.alert(
+        "Reward Suggested",
+        "Your reward idea was sent to your parent for approval.",
+      );
+    } catch (error: any) {
+      console.error("suggest reward:", error);
+
+      const message =
+        typeof error?.response?.data === "string"
+          ? error.response.data
+          : (error?.response?.data?.message ??
+            error?.message ??
+            "Could not send reward suggestion.");
+
+      Alert.alert("Could Not Suggest Reward", message);
+    } finally {
+      setSendingSuggestion(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
       <FlatList
@@ -159,6 +221,57 @@ export default function KidChoresScreen() {
               Check back later or ask a parent if there is anything else to help
               with.
             </Text>
+          </View>
+        }
+        ListFooterComponent={
+          <View style={styles.suggestCard}>
+            <Text style={styles.suggestTitle}>Suggest a Reward</Text>
+
+            <Text style={styles.suggestSubtitle}>
+              Have an idea for a new reward? Send it to your parent for
+              approval.
+            </Text>
+
+            <Text style={styles.label}>Reward Idea</Text>
+            <TextInput
+              value={rewardName}
+              onChangeText={setRewardName}
+              placeholder="Example: Pizza night"
+              style={styles.input}
+            />
+
+            <Text style={styles.label}>Point Cost</Text>
+            <TextInput
+              value={rewardCost}
+              onChangeText={(value) =>
+                setRewardCost(value.replace(/\D/g, "").slice(0, 4))
+              }
+              keyboardType="number-pad"
+              placeholder="Example: 35"
+              style={styles.input}
+            />
+
+            <Text style={styles.label}>Why do you want it?</Text>
+            <TextInput
+              value={rewardReason}
+              onChangeText={setRewardReason}
+              placeholder="Example: I want this for finishing my chores"
+              style={[styles.input, styles.reasonInput]}
+              multiline
+            />
+
+            <Pressable
+              style={[
+                styles.suggestButton,
+                sendingSuggestion && styles.disabledButton,
+              ]}
+              disabled={sendingSuggestion}
+              onPress={sendRewardSuggestion}
+            >
+              <Text style={styles.suggestButtonText}>
+                {sendingSuggestion ? "Sending..." : "Send to Parent"}
+              </Text>
+            </Pressable>
           </View>
         }
         contentContainerStyle={styles.listContent}
@@ -442,5 +555,53 @@ const styles = StyleSheet.create({
     color: "#92400e",
     fontWeight: "800",
     lineHeight: 20,
+  },
+
+  suggestCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 18,
+    elevation: 2,
+  },
+  suggestTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  suggestSubtitle: {
+    color: "#6b7280",
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  label: {
+    fontWeight: "900",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+    backgroundColor: "#fff",
+  },
+  reasonInput: {
+    minHeight: 72,
+    textAlignVertical: "top",
+  },
+  suggestButton: {
+    backgroundColor: "#8b5cf6",
+    borderRadius: 14,
+    padding: 14,
+    alignItems: "center",
+  },
+  suggestButtonText: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 16,
   },
 });

@@ -14,10 +14,12 @@ public class RewardService {
     private final RewardRedemptionRepository redemptionRepository;
     private final PointsService pointsService;
     private final ApprovalQueueService approvalQueueService;
+    private final RewardSuggestionRepository suggestionRepository;
 
     public RewardService(
             RewardRepository rewardRepository,
             RewardRedemptionRepository redemptionRepository,
+            RewardSuggestionRepository suggestionRepository,
             PointsService pointsService,
             ApprovalQueueService approvalQueueService) {
 
@@ -25,6 +27,7 @@ public class RewardService {
         this.redemptionRepository = redemptionRepository;
         this.pointsService = pointsService;
         this.approvalQueueService = approvalQueueService;
+        this.suggestionRepository = suggestionRepository;
     }
 
     public List<RewardCard> getRewardShop() throws SQLException {
@@ -82,6 +85,75 @@ public class RewardService {
                 "AUTO_APPROVED");
 
         return RewardRedeemResult.autoApproved();
+    }
+
+    public RewardSuggestion kidSuggestsReward(SuggestRewardRequest request)
+            throws SQLException {
+
+        validateRewardSuggestion(request);
+
+        RewardSuggestion suggestion = suggestionRepository.createSuggestion(request);
+
+        approvalQueueService.addRewardSuggestionApproval(suggestion);
+
+        return suggestion;
+    }
+
+    public boolean parentApprovesRewardSuggestion(int suggestionId)
+            throws SQLException {
+
+        Optional<RewardSuggestion> possibleSuggestion = suggestionRepository.findWaitingById(suggestionId);
+
+        if (possibleSuggestion.isEmpty()) {
+            return false;
+        }
+
+        RewardSuggestion suggestion = possibleSuggestion.get();
+
+        CreateRewardRequest reward = new CreateRewardRequest();
+        reward.setName(suggestion.getName());
+        reward.setCost(suggestion.getCost());
+        reward.setRequiresApproval(suggestion.getCost() > APPROVAL_POINT_LIMIT);
+
+        rewardRepository.saveReward(reward);
+
+        boolean approved = suggestionRepository.markApproved(suggestionId);
+
+        if (approved) {
+            approvalQueueService.markRewardSuggestionApproved(suggestionId);
+        }
+
+        return approved;
+    }
+
+    public boolean parentDeniesRewardSuggestion(int suggestionId)
+            throws SQLException {
+
+        boolean denied = suggestionRepository.markDenied(suggestionId);
+
+        if (denied) {
+            approvalQueueService.markRewardSuggestionDenied(suggestionId);
+        }
+
+        return denied;
+    }
+
+    private void validateRewardSuggestion(SuggestRewardRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Reward suggestion is required.");
+        }
+
+        if (request.getUsername() == null || request.getUsername().isBlank()) {
+            throw new IllegalArgumentException("Kid username is required.");
+        }
+
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new IllegalArgumentException("Reward name is required.");
+        }
+
+        if (request.getCost() <= 0) {
+            throw new IllegalArgumentException("Reward cost must be greater than 0.");
+        }
     }
 
     public boolean parentApprovesReward(int redemptionId) throws SQLException {

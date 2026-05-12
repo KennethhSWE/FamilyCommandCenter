@@ -84,6 +84,11 @@ public final class ApprovalQueueRoutes {
             return rewardService.parentApprovesReward(approval.getRelatedRecordId());
         }
 
+        if (approval.getApprovalType() == ApprovalType.REWARD_SUGGESTION) {
+            return rewardService.parentApprovesRewardSuggestion(
+                    approval.getRelatedRecordId());
+        }
+
         return false;
     }
 
@@ -98,6 +103,11 @@ public final class ApprovalQueueRoutes {
 
         if (approval.getApprovalType() == ApprovalType.REWARD_REDEMPTION) {
             return rewardService.parentDeniesReward(approval.getRelatedRecordId());
+        }
+
+        if (approval.getApprovalType() == ApprovalType.REWARD_SUGGESTION) {
+            return rewardService.parentDeniesRewardSuggestion(
+                    approval.getRelatedRecordId());
         }
 
         return false;
