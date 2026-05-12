@@ -3,7 +3,10 @@ package familycommandcenter.points;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PointTransactionRepository {
 
@@ -56,5 +59,84 @@ public class PointTransactionRepository {
             ps.setString(4, source);
             ps.executeUpdate();
         }
+    }
+
+    public List<PointTransaction> findRecentTransactions(int limit)
+            throws SQLException {
+
+        String sql = """
+                SELECT
+                    id,
+                    user_name,
+                    change_amount,
+                    reason,
+                    source,
+                    created_at
+                FROM point_transactions
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """;
+
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, limit);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                List<PointTransaction> transactions = new ArrayList<>();
+
+                while (rs.next()) {
+                    transactions.add(mapTransaction(rs));
+                }
+
+                return transactions;
+            }
+        }
+    }
+
+    public List<PointTransaction> findRecentTransactionsForKid(
+            String username,
+            int limit) throws SQLException {
+
+        String sql = """
+                SELECT
+                    id,
+                    user_name,
+                    change_amount,
+                    reason,
+                    source,
+                    created_at
+                FROM point_transactions
+                WHERE user_name = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """;
+
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setString(1, username);
+            ps.setInt(2, limit);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                List<PointTransaction> transactions = new ArrayList<>();
+
+                while (rs.next()) {
+                    transactions.add(mapTransaction(rs));
+                }
+
+                return transactions;
+            }
+        }
+    }
+
+    private PointTransaction mapTransaction(ResultSet rs) throws SQLException {
+        return new PointTransaction(
+                rs.getInt("id"),
+                rs.getString("user_name"),
+                rs.getInt("change_amount"),
+                rs.getString("reason"),
+                rs.getString("source"),
+                rs.getTimestamp("created_at").toString());
     }
 }

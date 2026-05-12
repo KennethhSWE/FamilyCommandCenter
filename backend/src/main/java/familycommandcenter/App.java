@@ -39,92 +39,91 @@ import java.sql.SQLException;
 
 public final class App {
 
-    public static void main(String[] args) throws SQLException {
-        DataSource ds = Database.getDataSource();
+        public static void main(String[] args) throws SQLException {
+                DataSource ds = Database.getDataSource();
 
-        UserDAO userDAO = new UserDAO(ds);
-        PointsBankDAO pointsDAO = new PointsBankDAO(ds);
+                UserDAO userDAO = new UserDAO(ds);
+                PointsBankDAO pointsDAO = new PointsBankDAO(ds);
 
-        PointTransactionRepository pointTransactionRepository = new PointTransactionRepository(ds);
-        pointTransactionRepository.makeSureTableExists();
+                PointTransactionRepository pointTransactionRepository = new PointTransactionRepository(ds);
+                pointTransactionRepository.makeSureTableExists();
 
-        ParentPinRepository parentPinRepository = new ParentPinRepository(ds);
-        ParentPinService parentPinService = new ParentPinService(parentPinRepository);
-        parentPinService.makeSureStarterPinExists();
+                ParentPinRepository parentPinRepository = new ParentPinRepository(ds);
+                ParentPinService parentPinService = new ParentPinService(parentPinRepository);
+                parentPinService.makeSureStarterPinExists();
 
-        PointsService pointsService = new PointsService(
-                pointsDAO,
-                pointTransactionRepository);
+                PointsService pointsService = new PointsService(
+                                pointsDAO,
+                                pointTransactionRepository);
+                NotificationRepository notificationRepository = new NotificationRepository(ds);
+                NotificationService notificationService = new NotificationService(notificationRepository);
+                notificationService.makeSureTableExists();
 
-        NotificationRepository notificationRepository = new NotificationRepository(ds);
-        NotificationService notificationService = new NotificationService(notificationRepository);
-        notificationService.makeSureTableExists();
+                CalendarRepository calendarRepository = new CalendarRepository(ds);
+                CalendarService calendarService = new CalendarService(calendarRepository);
+                calendarService.makeSureTableExists();
 
-        CalendarRepository calendarRepository = new CalendarRepository(ds);
-        CalendarService calendarService = new CalendarService(calendarRepository);
-        calendarService.makeSureTableExists();
+                ApprovalQueueRepository approvalQueueRepository = new ApprovalQueueRepository(ds);
+                ApprovalQueueService approvalQueueService = new ApprovalQueueService(
+                                approvalQueueRepository,
+                                notificationService);
+                approvalQueueService.makeSureTableExists();
 
-        ApprovalQueueRepository approvalQueueRepository = new ApprovalQueueRepository(ds);
-        ApprovalQueueService approvalQueueService = new ApprovalQueueService(
-                approvalQueueRepository,
-                notificationService);
-        approvalQueueService.makeSureTableExists();
+                ChoreRepository choreRepository = new ChoreRepository(ds);
+                choreRepository.makeSureChoreTableIsReady();
 
-        ChoreRepository choreRepository = new ChoreRepository(ds);
-        choreRepository.makeSureChoreTableIsReady();
+                ChoreService choreService = new ChoreService(
+                                choreRepository,
+                                pointsService,
+                                approvalQueueService);
+                DailyChoreService dailyChoreService = new DailyChoreService(
+                                userDAO,
+                                choreRepository,
+                                pointsService);
 
-        ChoreService choreService = new ChoreService(
-                choreRepository,
-                pointsService,
-                approvalQueueService);
-        DailyChoreService dailyChoreService = new DailyChoreService(
-                userDAO,
-                choreRepository,
-                pointsService);
+                RewardRepository rewardRepository = new RewardRepository(ds);
+                RewardRedemptionRepository rewardRedemptionRepository = new RewardRedemptionRepository(ds);
+                RewardService rewardService = new RewardService(
+                                rewardRepository,
+                                rewardRedemptionRepository,
+                                pointsService,
+                                approvalQueueService);
 
-        RewardRepository rewardRepository = new RewardRepository(ds);
-        RewardRedemptionRepository rewardRedemptionRepository = new RewardRedemptionRepository(ds);
-        RewardService rewardService = new RewardService(
-                rewardRepository,
-                rewardRedemptionRepository,
-                pointsService,
-                approvalQueueService);
+                ObjectMapper mapper = new ObjectMapper();
+                mapper.registerModule(new JavaTimeModule());
+                mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                Javalin api = Javalin.create(config -> {
+                        config.plugins.enableCors(cors -> cors.add(it -> it.anyHost()));
+                        config.jsonMapper(new JavalinJackson(mapper));
+                }).start(7070);
 
-        Javalin api = Javalin.create(config -> {
-            config.plugins.enableCors(cors -> cors.add(it -> it.anyHost()));
-            config.jsonMapper(new JavalinJackson(mapper));
-        }).start(7070);
+                System.out.println("Javalin listening on :7070");
 
-        System.out.println("Javalin listening on :7070");
+                AuthRoutes.register(api, userDAO, pointsDAO);
+                ParentPinRoutes.register(api, parentPinService);
+                ChoreRoutes.register(api, choreService);
+                RewardRoutes.register(api, rewardService);
+                ApprovalQueueRoutes.register(
+                                api,
+                                approvalQueueService,
+                                choreService,
+                                rewardService);
+                NotificationRoutes.register(api, notificationService);
+                CalendarRoutes.register(api, calendarService);
+                PointsRoutes.register(api, pointsService);
+                UserRoutes.register(api, userDAO);
 
-        AuthRoutes.register(api, userDAO, pointsDAO);
-        ParentPinRoutes.register(api, parentPinService);
-        ChoreRoutes.register(api, choreService);
-        RewardRoutes.register(api, rewardService);
-        ApprovalQueueRoutes.register(
-                api,
-                approvalQueueService,
-                choreService,
-                rewardService);
-        NotificationRoutes.register(api, notificationService);
-        CalendarRoutes.register(api, calendarService);
-        PointsRoutes.register(api, pointsService);
-        UserRoutes.register(api, userDAO);
+                api.post("/api/assign/daily", ctx -> ctx.json(dailyChoreService.runMorningChoreSweep()));
 
-        api.post("/api/assign/daily", ctx -> ctx.json(dailyChoreService.runMorningChoreSweep()));
-
-        api.before("/api/parent-pin/*", new AuthMiddleware());
-        api.before("/api/chores/*", new AuthMiddleware());
-        api.before("/api/rewards/*", new AuthMiddleware());
-        api.before("/api/approvals/*", new AuthMiddleware());
-        api.before("/api/notifications/*", new AuthMiddleware());
-        api.before("/api/calendar/*", new AuthMiddleware());
-        api.before("/api/points/*", new AuthMiddleware());
-        api.before("/api/users/*", new AuthMiddleware());
-        api.before("/api/assign/*", new AuthMiddleware());
-    }
+                api.before("/api/parent-pin/*", new AuthMiddleware());
+                api.before("/api/chores/*", new AuthMiddleware());
+                api.before("/api/rewards/*", new AuthMiddleware());
+                api.before("/api/approvals/*", new AuthMiddleware());
+                api.before("/api/notifications/*", new AuthMiddleware());
+                api.before("/api/calendar/*", new AuthMiddleware());
+                api.before("/api/points/*", new AuthMiddleware());
+                api.before("/api/users/*", new AuthMiddleware());
+                api.before("/api/assign/*", new AuthMiddleware());
+        }
 }

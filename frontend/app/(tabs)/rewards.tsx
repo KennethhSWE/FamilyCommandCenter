@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     color: "#991b1b",
   },
   approvalText: {
-    color: "#b45309",xlose
+    color: "#b45309",
     padding: 13,
     alignItems: "center",
   },

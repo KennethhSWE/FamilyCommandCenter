@@ -1,6 +1,7 @@
 package familycommandcenter.points;
 
 import familycommandcenter.model.PointsBankDAO;
+import java.util.List;
 
 import java.sql.SQLException;
 
@@ -123,6 +124,30 @@ public class PointsService {
                 changeAmount,
                 newPoints,
                 reason);
+    }
+
+    public List<PointTransaction> getRecentTransactions() throws SQLException {
+        if (pointTransactionRepository == null) {
+            return List.of();
+        }
+
+        return pointTransactionRepository.findRecentTransactions(25);
+    }
+
+    public List<PointTransaction> getRecentTransactionsForKid(String username)
+            throws SQLException {
+
+        if (pointTransactionRepository == null) {
+            return List.of();
+        }
+
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username is required.");
+        }
+
+        return pointTransactionRepository.findRecentTransactionsForKid(
+                username.trim(),
+                25);
     }
 
     private void savePointTransaction(

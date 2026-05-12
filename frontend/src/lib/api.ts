@@ -179,6 +179,24 @@ export interface CreateCalendarEntryRequest {
   entryDate: string;
 }
 
+export interface PointAdjustmentResult {
+  username: string;
+  action: "ADD" | "REMOVE";
+  oldPoints: number;
+  changeAmount: number;
+  newPoints: number;
+  reason: string;
+}
+
+export interface PointTransaction {
+  id: number;
+  username: string;
+  changeAmount: number;
+  reason: string;
+  source: string;
+  createdAt: string;
+}
+
 /* ===================================================================
    Raw backend shapes
    =================================================================== */
@@ -348,6 +366,27 @@ export const getPoints = async (username: string): Promise<number> => {
 
   return raw.total_points;
 };
+
+export const adjustPoints = (
+  username: string,
+  points: number,
+  action: "ADD" | "REMOVE",
+  reason: string,
+) =>
+  unwrap<PointAdjustmentResult>(
+    api.post("/points/adjust", {
+      username,
+      points,
+      action,
+      reason,
+    }),
+  );
+
+export const getRecentPointTransactions = () =>
+  unwrap<PointTransaction[]>(api.get("/points/transactions/recent"));
+
+export const getPointTransactionsForKid = (username: string) =>
+  unwrap<PointTransaction[]>(api.get(`/points/transactions/${username}`));
 
 /* ===================================================================
    Rewards

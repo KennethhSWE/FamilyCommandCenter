@@ -1,6 +1,6 @@
 // frontend/app/(tabs)/points.tsx
 //--------------------------------------------------------------
-// Points tab – family scoreboard
+// Points tab – family scoreboard and point history
 //--------------------------------------------------------------
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useState } from "react";
@@ -15,7 +15,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { getKidsByHousehold, getPoints, Kid } from "../../src/lib/api";
+import {
+  getKidsByHousehold,
+  getPoints,
+  getRecentPointTransactions,
+  Kid,
+  PointTransaction,
+} from "../../src/lib/api";
 import { getHouseholdId } from "../../src/lib/auth";
 
 type KidPointCard = {
@@ -25,6 +31,7 @@ type KidPointCard = {
 
 export default function PointsScreen() {
   const [scoreboard, setScoreboard] = useState<KidPointCard[]>([]);
+  const [pointHistory, setPointHistory] = useState<PointTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -36,6 +43,7 @@ export default function PointsScreen() {
 
       if (!householdId) {
         setScoreboard([]);
+        setPointHistory([]);
         return;
       }
 
@@ -54,7 +62,10 @@ export default function PointsScreen() {
 
       cards.sort((a, b) => b.points - a.points);
 
+      const transactions = await getRecentPointTransactions();
+
       setScoreboard(cards);
+      setPointHistory(transactions);
     } catch (error) {
       console.error("load points:", error);
       Alert.alert("Error", "Could not load family points.");
@@ -70,6 +81,26 @@ export default function PointsScreen() {
       loadPoints();
     }, [loadPoints]),
   );
+
+  const formatChange = (changeAmount: number) => {
+    if (changeAmount > 0) {
+      return `+${changeAmount}`;
+    }
+
+    return String(changeAmount);
+  };
+
+  const formatSource = (source: string) => {
+    return source.replace(/_/g, " ").toLowerCase();
+  };
+
+  const formatDate = (createdAt: string) => {
+    if (!createdAt) {
+      return "";
+    }
+
+    return createdAt.substring(0, 16);
+  };
 
   const totalPoints = scoreboard.reduce((sum, card) => sum + card.points, 0);
   const topKid = scoreboard[0];
@@ -140,6 +171,60 @@ export default function PointsScreen() {
                   <View style={styles.pointsBox}>
                     <Text style={styles.pointsNumber}>{card.points}</Text>
                     <Text style={styles.pointsLabel}>pts</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Point History</Text>
+
+          {pointHistory.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>No point history yet.</Text>
+              <Text style={styles.emptyText}>
+                Parent point adjustments will show here.
+              </Text>
+            </View>
+          ) : (
+            pointHistory.map((transaction) => {
+              const isPositive = transaction.changeAmount > 0;
+
+              return (
+                <View key={transaction.id} style={styles.historyCard}>
+                  <View
+                    style={[
+                      styles.changeBubble,
+                      isPositive
+                        ? styles.positiveBubble
+                        : styles.negativeBubble,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.changeText,
+                        isPositive ? styles.positiveText : styles.negativeText,
+                      ]}
+                    >
+                      {formatChange(transaction.changeAmount)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.historyInfo}>
+                    <Text style={styles.historyTitle}>
+                      {transaction.username}
+                    </Text>
+
+                    <Text style={styles.historyReason}>
+                      {transaction.reason}
+                    </Text>
+
+                    <Text style={styles.historyMeta}>
+                      {formatSource(transaction.source)} •{" "}
+                      {formatDate(transaction.createdAt)}
+                    </Text>
                   </View>
                 </View>
               );
@@ -277,6 +362,59 @@ const styles = StyleSheet.create({
   pointsLabel: {
     color: "#6b7280",
     fontWeight: "800",
+  },
+  historyCard: {
+    backgroundColor: "#f9fafb",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  changeBubble: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  positiveBubble: {
+    backgroundColor: "#dcfce7",
+  },
+  negativeBubble: {
+    backgroundColor: "#fee2e2",
+  },
+  changeText: {
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  positiveText: {
+    color: "#166534",
+  },
+  negativeText: {
+    color: "#991b1b",
+  },
+  historyInfo: {
+    flex: 1,
+  },
+  historyTitle: {
+    fontSize: 17,
+    fontWeight: "900",
+    color: "#111827",
+    marginBottom: 3,
+  },
+  historyReason: {
+    color: "#374151",
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  historyMeta: {
+    color: "#6b7280",
+    fontSize: 12,
+    textTransform: "capitalize",
   },
   emptyCard: {
     backgroundColor: "#f9fafb",
