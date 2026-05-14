@@ -38,6 +38,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.UUID;
 
 public final class App {
@@ -115,6 +116,10 @@ public final class App {
                 api.start(port);
 
                 System.out.println("Javalin listening on :" + port);
+
+                api.get("/api/health", ctx -> ctx.json(Map.of(
+                                "status", "ok",
+                                "app", "Family Command Center")));
 
                 AuthRoutes.register(api, userDAO, pointsDAO);
                 ParentPinRoutes.register(api, parentPinService);
