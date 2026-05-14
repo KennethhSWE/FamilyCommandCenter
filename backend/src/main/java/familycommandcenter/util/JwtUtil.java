@@ -18,7 +18,7 @@ import java.util.UUID;
 /**
  * JWT helper – generates and verifies HMAC-SHA256 tokens.
  *
- * The signing secret is read from JWT_SECRET in .env.
+ * * The signing secret is read from FCC_JWT_SECRET or JWT_SECRET.
  * If the env-var is missing during local dev, a fallback secret is generated at
  * runtime.
  */
@@ -99,7 +99,15 @@ public final class JwtUtil {
     }
 
     private static Key initSigningKey() {
-        String secretB64 = System.getenv("JWT_SECRET");
+        String secretB64 = System.getenv("FCC_JWT_SECRET");
+
+        if (secretB64 == null || secretB64.isBlank()) {
+            secretB64 = DOTENV.get("FCC_JWT_SECRET");
+        }
+
+        if (secretB64 == null || secretB64.isBlank()) {
+            secretB64 = System.getenv("JWT_SECRET");
+        }
 
         if (secretB64 == null || secretB64.isBlank()) {
             secretB64 = DOTENV.get("JWT_SECRET");

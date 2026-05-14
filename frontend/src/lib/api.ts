@@ -6,6 +6,16 @@ import { getToken } from "./auth";
    Axios setup
    =================================================================== */
 
+const normalizeApiUrl = (url: string): string => {
+  const cleanUrl = url.trim().replace(/\/+$/, "");
+
+  if (cleanUrl.endsWith("/api")) {
+    return cleanUrl;
+  }
+
+  return `${cleanUrl}/api`;
+};
+
 const getBackendHost = () => {
   const expoStuff = Constants as any;
 
@@ -23,7 +33,21 @@ const getBackendHost = () => {
   return "10.0.0.103";
 };
 
-const BASE_URL = `http://${getBackendHost()}:7070/api`;
+const getLocalApiUrl = () => {
+  return `http://${getBackendHost()}:7070/api`;
+};
+
+const getApiUrl = () => {
+  const hostedApiUrl = process.env.EXPO_PUBLIC_API_URL;
+
+  if (hostedApiUrl && hostedApiUrl.trim().length > 0) {
+    return normalizeApiUrl(hostedApiUrl);
+  }
+
+  return getLocalApiUrl();
+};
+
+const BASE_URL = getApiUrl();
 
 console.log("[API] BASE_URL", BASE_URL);
 

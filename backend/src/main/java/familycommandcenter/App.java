@@ -108,9 +108,13 @@ public final class App {
                 Javalin api = Javalin.create(config -> {
                         config.plugins.enableCors(cors -> cors.add(it -> it.anyHost()));
                         config.jsonMapper(new JavalinJackson(mapper));
-                }).start(7070);
+                });
 
-                System.out.println("Javalin listening on :7070");
+                int port = getPort();
+
+                api.start(port);
+
+                System.out.println("Javalin listening on :" + port);
 
                 AuthRoutes.register(api, userDAO, pointsDAO);
                 ParentPinRoutes.register(api, parentPinService);
@@ -151,5 +155,19 @@ public final class App {
                 api.before("/api/kids", new AuthMiddleware());
                 api.before("/api/kids/*", new AuthMiddleware());
 
+        }
+
+        private static int getPort() {
+                String rawPort = System.getenv("PORT");
+
+                if (rawPort == null || rawPort.isBlank()) {
+                        return 7070;
+                }
+
+                try {
+                        return Integer.parseInt(rawPort);
+                } catch (NumberFormatException e) {
+                        return 7070;
+                }
         }
 }
