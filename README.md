@@ -1,118 +1,111 @@
 # Family Command Center
 
-A polished, tablet-friendly family organization app built with a full-stack architecture.
+Family Command Center is a full-stack family organization app built for a shared household. It supports a mounted family hub tablet and parent phone companion mode.
+
+The app is designed to help families manage chores, points, rewards, bills, calendar events, notifications, and parent approvals in one place.
 
 ---
 
-## 🧭 Project Structure
+## Project Structure
 
-```
-family-command-center/
+```text
+FamilyCommandCenter-main/
 │
-├── frontend/        # React Native (Expo) app for Amazon Fire Tablets
-├── backend/         # Java + Spring Boot REST API
-└── README.md        # This file
+├── backend/        # Java + Javalin REST API
+├── frontend/       # React Native + Expo app
+└── README.md
 ```
 
----
+## Features
 
-## ✨ Features
+- household setup
+- Existing family login for additional devices
+- Device mode selection
+- Family Hub Tablet mode
+- Parent Phone Companion mode
+- Chore tracking
+- Daily chore assignment
+- Parent chore approval queue
+- Points system
+- Point adjustment history
+- Reward shop
+- Parent-approved reward redemptions
+- Kid reward suggestions
+- Calendar and bill tracking
+- Notifications / alerts
+- Parent PIN gate for admin tools
+- Household-scoped backend data
 
-- Chore tracking with points
-- Parent-approved or instant reward redemptions
-- Custom avatars and themes
-- Professional, clean UI optimized for tablets
-- PostgreSQL-backed data persistence
+## Tech Stack
 
----
+Frontend (React Native + Expo)
+Backend (Java 17 + Javalin)
+Database (PostgreSQL)
+Auth (JWT)
+Password / PIN hashing (BCrypt)
+Build Tool (Gradle)
 
-## 🛠️ Tech Stack
+## Run Backend Locally
 
-| Layer    | Tech                        |
-| -------- | --------------------------- |
-| Frontend | React Native + Expo         |
-| Backend  | Java + Spring Boot          |
-| Database | PostgreSQL                  |
-| Hosting  | TBD (Local or Cloud-hosted) |
-
----
-
-## 🚀 Getting Started
-
-### Backend (Spring Boot)
-
-```bash
 cd backend
+gradle clean build
 gradle run
-```
 
-Make sure PostgreSQL is running and `application.properties` is configured.
+Local backend default: http://localhost:7070
 
-### Frontend (React Native with Expo)
+## Frontend Setup
 
-```bash
+Requirements
+Node.js
+npm
+Expo CLI / Expo Go
+
+## Run Backend Locally
+
 cd frontend
 npm install
-npx expo start
-or npx expo start --lan -c for phone app
-```
+npx expo start --lan -c
 
-Open in Expo Go or run on an Android emulator.
+Use Expo Go to open the app on a phone or tablet.
 
----
+## Device Modes
 
-## 📦 Deployment Plans
+- Hub Mode
+  Best for a mounted tablet. Shows a large family dashboard with chores, points, calendar, bills, alerts, and quick actions.
 
-- Tablet kiosk mode on Amazon Fire
-- Admin panel hidden behind login
-- Cloud deployment with Heroku or Render (WIP)
+- Companion Mode
+  Best for a parent phone. Shows parent-focused tools for approvals, points, rewards, calendar, chores, alerts, and admin settings.
 
----
+## Security Notes
 
-## 🙌 Contributors
+Backend data is scoped by household.
+The frontend does not decide which household it can access.
+The backend reads the household from the JWT.
+Parent/admin tools are protected by parent authentication and parent PIN where appropriate.
+JWT secrets and database credentials must stay out of Git.
 
-**Kenneth Hayes** — Full-stack Developer & Visionary Dad
+## Current Status
 
----
+The app is in private beta preparation.
 
-## 📜 License
+Working locally:
 
-This project is licensed under the MIT License.
+Household setup
+Existing family login
+Hub mode
+Companion mode
+Device settings
+Chores
+Rewards
+Points
+Calendar
+Notifications
+Parent admin tools
 
-```
-MIT License
+Next major step:
 
-Copyright (c) 2025 Kenneth Hayes
+Deploy backend and database for remote family testing.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
+## Contributors
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-This is the React Native / Expo client for the Family Command Center tablet app.
-
-## Run Locally
-
-```bash
-npm install
-npx expo start
-
-## 📝Notes
-
-- Designed for 7" Amazon Fire Tablets
-- Uses custom tab bar, SVG icons, and Harry Potter–themed points screen
-```
+Kenneth Hayes — Full-stack Developer
