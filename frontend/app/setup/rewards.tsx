@@ -107,7 +107,7 @@ export default function SetupRewardsScreen() {
 
     try {
       await createRewards(cleanedRewards);
-      router.replace("/setup/done" as any);
+      router.replace("/mode-select" as any);
     } catch (error: any) {
       console.error("save starter rewards:", error);
 
