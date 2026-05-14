@@ -78,6 +78,13 @@ export interface CreateHouseholdResult {
   householdId: string;
 }
 
+export interface LoginResult {
+  token: string;
+  householdId: string;
+  role: "parent" | "kid";
+  username: string;
+}
+
 export interface DailyChoreSummary {
   kidsChecked: number;
   carriedOverChores: number;
@@ -258,6 +265,14 @@ export const createHousehold = (adminName: string, pin: string) =>
   unwrap<CreateHouseholdResult>(
     api.post("/household", {
       adminName,
+      pin,
+    }),
+  );
+
+export const loginParent = (username: string, pin: string) =>
+  unwrap<LoginResult>(
+    api.post("/login", {
+      username,
       pin,
     }),
   );

@@ -32,7 +32,7 @@ export default function AppLauncher() {
   }
 
   if (!hasToken) {
-    return <Redirect href={"/setup/parent" as any} />;
+    return <Redirect href={"/welcome" as any} />;
   }
 
   if (!deviceMode) {

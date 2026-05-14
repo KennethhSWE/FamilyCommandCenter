@@ -9,6 +9,7 @@ import DailyChoreSweepPanel from "../components/DailyChoreSweepPanel";
 import ParentPinGate from "../components/ParentPinGate";
 import PointAdjustmentPanel from "../components/PointAdjustmentPanel";
 import RewardManagementPanel from "../components/RewardManagementPanel";
+import DeviceSettingsPanel from "../components/DeviceSettingsPanel";
 
 export default function AdminScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -43,6 +44,7 @@ export default function AdminScreen() {
           <DailyChoreSweepPanel />
 
           <ChorePoolPanel />
+          <DeviceSettingsPanel />
         </ScrollView>
       </SafeAreaView>
     </ParentPinGate>
