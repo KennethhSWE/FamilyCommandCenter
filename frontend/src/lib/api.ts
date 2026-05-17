@@ -53,7 +53,7 @@ console.log("[API] BASE_URL", BASE_URL);
 
 export const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 60000,
 });
 
 api.interceptors.request.use(async (cfg: InternalAxiosRequestConfig) => {
@@ -243,6 +243,11 @@ export interface PointTransaction {
   createdAt: string;
 }
 
+export interface BackendHealth {
+  status: string;
+  app: string;
+}
+
 /* ===================================================================
    Raw backend shapes
    =================================================================== */
@@ -280,6 +285,13 @@ type RawReward = {
   requiresApproval?: boolean;
   requires_approval?: boolean;
 };
+
+/* ===================================================================
+    Setup / Household
+   =================================================================== */
+
+export const checkBackendHealth = () =>
+  unwrap<BackendHealth>(api.get("/health"));
 
 /* ===================================================================
    Setup / Household
