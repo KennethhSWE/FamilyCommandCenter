@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import {
+  checkBackendHealth,
   Chore,
   FamilyCalendarEntry,
   getCalendarEntries,
@@ -25,6 +26,7 @@ import {
   getWaitingApprovals,
   Kid,
 } from "../src/lib/api";
+
 import { saveDeviceMode } from "../src/lib/deviceMode";
 
 type KidDashboardRow = {
@@ -35,6 +37,8 @@ type KidDashboardRow = {
   waitingCount: number;
   remainingCount: number;
 };
+
+type HubConnectionState = "connecting" | "connected" | "error";
 
 const todayKey = () => {
   const now = new Date();
@@ -72,6 +76,17 @@ const formatShortDate = (value?: string) => {
   return `${month}/${day}`;
 };
 
+const formatUpdatedTime = (value: Date | null) => {
+  if (!value) {
+    return "Not updated yet";
+  }
+
+  return value.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
 const isBillDueSoon = (entry: FamilyCalendarEntry) => {
   if (entry.type !== "BILL" || entry.paid) {
     return false;
@@ -101,11 +116,25 @@ export default function HubScreen() {
   const [approvalCount, setApprovalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [connectionState, setConnectionState] =
+    useState<HubConnectionState>("connecting");
+
+  const [connectionMessage, setConnectionMessage] = useState(
+    "Connecting to Family Command Center...",
+  );
+
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const loadHub = useCallback(async () => {
     setRefreshing(true);
+    setConnectionState("connecting");
+    setConnectionMessage(
+      "Connecting to Family Command Center. If the free server is waking up, this can take up to a minute.",
+    );
 
     try {
+      await checkBackendHealth();
+
       const [kidList, calendar, notificationCount, approvals] =
         await Promise.all([
           getKids(),
@@ -144,9 +173,15 @@ export default function HubScreen() {
       setCalendarEntries(calendar);
       setUnreadAlerts(notificationCount.unreadCount ?? 0);
       setApprovalCount(approvals.length);
+      setLastUpdated(new Date());
+      setConnectionState("connected");
+      setConnectionMessage("Connected");
     } catch (error) {
       console.error("load hub:", error);
-      Alert.alert("Hub Error", "Could not load the family dashboard.");
+      setConnectionState("error");
+      setConnectionMessage(
+        "Could not connect to the family server. Check Wi-Fi or tap Retry.",
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -159,6 +194,17 @@ export default function HubScreen() {
       loadHub();
     }, [loadHub]),
   );
+
+  useEffect(() => {
+    const intervalId = setInterval(
+      () => {
+        loadHub();
+      },
+      5 * 60 * 1000,
+    );
+
+    return () => clearInterval(intervalId);
+  }, [loadHub]);
 
   const totals = useMemo(() => {
     const totalPoints = kids.reduce((sum, row) => sum + row.points, 0);
@@ -207,7 +253,7 @@ export default function HubScreen() {
           text: "Switch",
           onPress: async () => {
             await saveDeviceMode("companion");
-            router.replace("/(tabs)/kids" as any);
+            router.replace("/(tabs)" as any);
           },
         },
       ],
@@ -257,6 +303,13 @@ export default function HubScreen() {
             </Text>
           </View>
         </View>
+
+        <ConnectionBanner
+          connectionState={connectionState}
+          message={connectionMessage}
+          lastUpdated={lastUpdated}
+          onRetry={loadHub}
+        />
 
         <View style={[styles.summaryGrid, isWide && styles.summaryGridWide]}>
           <SummaryCard
@@ -380,6 +433,63 @@ export default function HubScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function ConnectionBanner({
+  connectionState,
+  message,
+  lastUpdated,
+  onRetry,
+}: {
+  connectionState: HubConnectionState;
+  message: string;
+  lastUpdated: Date | null;
+  onRetry: () => void;
+}) {
+  const isConnected = connectionState === "connected";
+  const isError = connectionState === "error";
+
+  return (
+    <View
+      style={[
+        styles.connectionBanner,
+        isConnected && styles.connectionBannerConnected,
+        isError && styles.connectionBannerError,
+      ]}
+    >
+      <View style={styles.connectionRow}>
+        <MaterialCommunityIcons
+          name={
+            isConnected ? "cloud-check" : isError ? "cloud-alert" : "cloud-sync"
+          }
+          size={24}
+          color={isConnected ? "#15803d" : isError ? "#b91c1c" : "#b45309"}
+        />
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.connectionTitle}>
+            {isConnected
+              ? "Connected"
+              : isError
+                ? "Connection Issue"
+                : "Connecting"}
+          </Text>
+
+          <Text style={styles.connectionText}>
+            {isConnected
+              ? `Last updated ${formatUpdatedTime(lastUpdated)}`
+              : message}
+          </Text>
+        </View>
+
+        {isError && (
+          <Pressable style={styles.retryButton} onPress={onRetry}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -820,5 +930,49 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#6b7280",
     fontWeight: "700",
+  },
+
+  connectionBanner: {
+    backgroundColor: "#fffbeb",
+    borderRadius: 22,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#fde68a",
+  },
+  connectionBannerConnected: {
+    backgroundColor: "#f0fdf4",
+    borderColor: "#bbf7d0",
+  },
+  connectionBannerError: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#fecaca",
+  },
+  connectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  connectionTitle: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  connectionText: {
+    color: "#4b5563",
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  retryButton: {
+    backgroundColor: "#111827",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  retryButtonText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "900",
   },
 });
