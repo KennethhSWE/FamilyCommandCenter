@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AppState,
   ActivityIndicator,
   Alert,
   Pressable,
@@ -28,6 +29,8 @@ import {
 } from "../src/lib/api";
 
 import { saveDeviceMode } from "../src/lib/deviceMode";
+
+import { useKeepAwake } from "expo-keep-awake";
 
 type KidDashboardRow = {
   kid: Kid;
@@ -103,6 +106,7 @@ const isUpcomingEvent = (entry: FamilyCalendarEntry) => {
 };
 
 export default function HubScreen() {
+  useKeepAwake();
   const router = useRouter();
   const { width } = useWindowDimensions();
 
@@ -194,6 +198,16 @@ export default function HubScreen() {
       loadHub();
     }, [loadHub]),
   );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        loadHub();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [loadHub]);
 
   useEffect(() => {
     const intervalId = setInterval(
